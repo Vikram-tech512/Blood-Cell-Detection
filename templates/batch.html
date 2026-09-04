@@ -86,7 +86,7 @@
                     <span><strong>{{ differential_pct.neutrophil }}%</strong> ({{ counts.neutrophil }} cells)</span>
                 </div>
                 <div class="bar-track" style="height:12px;">
-                    <div class="bar-fill" style="width: {{ differential_pct.neutrophil }}%; background: #11a57d;"></div>
+                    <div class="bar-fill" data-pct="{{ differential_pct.neutrophil }}" style="background-color: #11a57d;"></div>
                 </div>
             </div>
 
@@ -96,7 +96,7 @@
                     <span><strong>{{ differential_pct.lymphocyte }}%</strong> ({{ counts.lymphocyte }} cells)</span>
                 </div>
                 <div class="bar-track" style="height:12px;">
-                    <div class="bar-fill" style="width: {{ differential_pct.lymphocyte }}%; background: #1d7ae8;"></div>
+                    <div class="bar-fill" data-pct="{{ differential_pct.lymphocyte }}" style="background-color: #1d7ae8;"></div>
                 </div>
             </div>
 
@@ -106,7 +106,7 @@
                     <span><strong>{{ differential_pct.monocyte }}%</strong> ({{ counts.monocyte }} cells)</span>
                 </div>
                 <div class="bar-track" style="height:12px;">
-                    <div class="bar-fill" style="width: {{ differential_pct.monocyte }}%; background: #8b5cf6;"></div>
+                    <div class="bar-fill" data-pct="{{ differential_pct.monocyte }}" style="background-color: #8b5cf6;"></div>
                 </div>
             </div>
 
@@ -116,7 +116,7 @@
                     <span><strong>{{ differential_pct.eosinophil }}%</strong> ({{ counts.eosinophil }} cells)</span>
                 </div>
                 <div class="bar-track" style="height:12px;">
-                    <div class="bar-fill" style="width: {{ differential_pct.eosinophil }}%; background: #f59e0b;"></div>
+                    <div class="bar-fill" data-pct="{{ differential_pct.eosinophil }}" style="background-color: #f59e0b;"></div>
                 </div>
             </div>
         </div>
@@ -186,5 +186,10 @@
             this.submit();
         });
     }
+
+    // Apply differential bar widths dynamically
+    document.querySelectorAll('.bar-fill[data-pct]').forEach(function(el) {
+        el.style.width = (el.dataset.pct || 0) + '%';
+    });
 </script>
 {% endblock %}

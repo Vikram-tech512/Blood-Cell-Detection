@@ -139,7 +139,7 @@
                         </div>
                     </div>
                     <div class="bar-track" style="height:10px; margin-top:8px;">
-                        <div class="bar-fill" style="width: {{ confidence }}%;"></div>
+                        <div class="bar-fill" data-pct="{{ confidence }}"></div>
                     </div>
                 </div>
 
@@ -152,14 +152,14 @@
                         {% for label_key, prob_score in probabilities.items() %}
                         {% set prob_percent = (prob_score * 100) | round(1) if prob_score <= 1.0 else prob_score | round(1) %}
                         <div class="probability-item">
-                            <div class="name" style="font-weight:{% if label_key == cell_type %}800{% else %}500{% endif %};">
+                            <div class="name {% if label_key == cell_type %}matched-name{% endif %}">
                                 {{ label_key | title }}
                                 {% if label_key == cell_type %}
                                 <span style="color:var(--primary); font-size:0.7rem;">● Match</span>
                                 {% endif %}
                             </div>
                             <div class="bar">
-                                <div class="fill" style="width: {{ prob_percent }}%; {% if label_key == cell_type %}background: linear-gradient(135deg, #3ea1ff, var(--primary));{% else %}background: rgba(148,163,184,0.4);{% endif %}"></div>
+                                <div class="fill {% if label_key == cell_type %}active-fill{% endif %}" data-pct="{{ prob_percent }}"></div>
                             </div>
                             <div class="value">{{ prob_percent }}%</div>
                         </div>
@@ -218,6 +218,12 @@
     </div>
 </div>
 
+<style>
+    .probability-item .name.matched-name { font-weight: 800; }
+    .probability-item .fill { height: 100%; border-radius: inherit; background: rgba(148,163,184,0.4); transition: width 0.3s ease; }
+    .probability-item .fill.active-fill { background: linear-gradient(135deg, #3ea1ff, var(--primary)); }
+</style>
+
 <script>
     // Real-time Grad-CAM Opacity Slider
     const slider = document.getElementById('xai-slider');
@@ -243,5 +249,10 @@
         if (slider) slider.value = val;
         updateOpacity(val);
     }
+
+    // Apply data-pct widths dynamically
+    document.querySelectorAll('.bar-fill[data-pct], .fill[data-pct]').forEach(function(el) {
+        el.style.width = (el.dataset.pct || 0) + '%';
+    });
 </script>
 {% endblock %}

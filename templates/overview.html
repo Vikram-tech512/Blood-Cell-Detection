@@ -136,7 +136,7 @@
                         <span>{{ ref_val }}%</span>
                     </div>
                     <div class="bar-track">
-                        <div class="bar-fill" style="width: {{ ref_val }}%; background: #{{ color_hex }};"></div>
+                        <div class="bar-fill" data-pct="{{ ref_val }}" data-color="#{{ color_hex }}"></div>
                     </div>
                 </div>
                 {% endfor %}
@@ -151,4 +151,11 @@
         <strong>Clinical & Research Notice:</strong> Blood Cell AI is an experimental deep learning diagnostic framework intended for research, cytological education, and clinical decision support. All classifications must be corroborated by a qualified medical professional or certified hematopathologist.
     </div>
 </div>
+
+<script>
+    document.querySelectorAll('.bar-fill[data-pct]').forEach(function(el) {
+        el.style.width = (el.dataset.pct || 0) + '%';
+        if (el.dataset.color) el.style.backgroundColor = el.dataset.color;
+    });
+</script>
 {% endblock %}
