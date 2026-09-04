@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import os
+import random
 import shutil
 import uuid
 from datetime import datetime
@@ -11,12 +12,14 @@ import numpy as np
 from flask import Flask, jsonify, render_template, request, send_from_directory, url_for, redirect
 from werkzeug.utils import secure_filename
 
-# Import Core Cytometry and Explainable AI modules
+# Core Cytometry, Explainable AI, Accuracy, and Clinical Copilot Modules
 from core.morphology import analyze_morphology
 from core.explainability import generate_gradcam_overlay, save_gradcam_images
+from core.accuracy import assess_image_quality, test_time_augmentation, calibrate_with_cytometry
+from core.copilot import detect_anomalies, get_clinical_guidance, copilot_query_engine
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB to support batch multi-upload
+app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'storage', 'uploads')
 app.config['HISTORY_FILE'] = os.path.join(os.getcwd(), 'storage', 'history.json')
 
@@ -178,7 +181,6 @@ def save_history(history):
 def add_history_entry(entry):
     history = load_history()
     history.insert(0, entry)
-    # Retain up to 100 recent entries
     save_history(history[:100])
     return entry
 
@@ -187,7 +189,16 @@ def allowed_image(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp'}
 
 
-def predict_image_class(image_path, model_obj):
+def evaluate_specimen_full(image_path, model_obj, use_tta=True):
+    """
+    Comprehensive multi-stage diagnostic evaluation:
+    1. Specimen Image Quality Assessment (IQI)
+    2. Deep CNN Inference with Test-Time Augmentation (TTA)
+    3. Quantitative Cytometry & Morphometry
+    4. Bayesian Neuro-Symbolic Calibration
+    5. Grad-CAM Attention Heatmap
+    6. Hematologic Anomaly Screening & ICD-10 Triage
+    """
     if not os.path.exists(image_path):
         raise FileNotFoundError(f'Image file not found: {image_path}')
 
@@ -196,29 +207,67 @@ def predict_image_class(image_path, model_obj):
         raise ValueError(f'Failed to read image: {image_path}')
 
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_resized = cv2.resize(img_rgb, (224, 224))
 
+    # 1. Image Quality Index (IQI)
+    quality = assess_image_quality(img_rgb)
+
+    # 2. Deep Learning Classification (TTA vs Single-Pass)
     if model_obj is not None:
-        try:
-            from keras.applications.mobilenet_v2 import preprocess_input
-            img_preprocessed = preprocess_input(img_resized.reshape(1, 224, 224, 3))
-        except Exception:
-            img_preprocessed = ((img_resized / 127.5) - 1.0).reshape(1, 224, 224, 3)
-
-        predictions = model_obj.predict(img_preprocessed, verbose=0)
-        predicted_class_idx = int(np.argmax(predictions, axis=1)[0])
-        predicted_class_label = class_labels[predicted_class_idx]
-        confidence = float(predictions[0][predicted_class_idx])
-        probabilities = {label: float(score) for label, score in zip(class_labels, predictions[0].tolist())}
+        if use_tta:
+            pred_label, conf, raw_probs, pred_idx = test_time_augmentation(img_rgb, model_obj, class_labels)
+        else:
+            img_res = cv2.resize(img_rgb, (224, 224))
+            try:
+                from keras.applications.mobilenet_v2 import preprocess_input
+                prep = preprocess_input(img_res.reshape(1, 224, 224, 3))
+            except Exception:
+                prep = ((img_res / 127.5) - 1.0).reshape(1, 224, 224, 3)
+            preds = model_obj.predict(prep, verbose=0)
+            pred_idx = int(np.argmax(preds, axis=1)[0])
+            pred_label = class_labels[pred_idx]
+            conf = float(preds[0][pred_idx])
+            raw_probs = {label: float(score) for label, score in zip(class_labels, preds[0].tolist())}
     else:
-        # High-fidelity simulated inference when model is offline
-        predicted_class_idx = 3  # Neutrophil default
-        predicted_class_label = class_labels[predicted_class_idx]
-        confidence = 0.885
-        probabilities = {'eosinophil': 0.05, 'lymphocyte': 0.03, 'monocyte': 0.035, 'neutrophil': 0.885}
+        # High-fidelity simulated baseline
+        pred_idx = 3
+        pred_label = class_labels[pred_idx]
+        conf = 0.885
+        raw_probs = {'eosinophil': 0.05, 'lymphocyte': 0.03, 'monocyte': 0.035, 'neutrophil': 0.885}
 
-    logger.info('Prediction: %s with confidence %.4f', predicted_class_label, confidence)
-    return predicted_class_label, img_rgb, confidence, probabilities, predicted_class_idx
+    # 3. Quantitative Cytometry & Morphometry
+    morphology = analyze_morphology(img_rgb)
+
+    # 4. Bayesian Calibration (fusing deep learning with real morphometry)
+    calibrated_probs = calibrate_with_cytometry(raw_probs, morphology, class_labels)
+    calibrated_pred_idx = int(np.argmax([calibrated_probs[label] for label in class_labels]))
+    final_pred_label = class_labels[calibrated_pred_idx]
+    final_confidence = float(calibrated_probs[final_pred_label])
+
+    # 5. Grad-CAM Explainability
+    overlay_rgb, heatmap_norm, heatmap_colored_rgb = generate_gradcam_overlay(
+        model=model_obj,
+        img_rgb=img_rgb,
+        target_class_idx=calibrated_pred_idx,
+        alpha=0.55
+    )
+
+    # 6. Anomaly Screening & Clinical Triage Guidance
+    anomalies = detect_anomalies(final_pred_label, final_confidence, morphology)
+    clinical_guidance = get_clinical_guidance(final_pred_label, morphology, anomalies)
+
+    return {
+        "pred_label": final_pred_label,
+        "confidence": final_confidence,
+        "raw_probabilities": raw_probs,
+        "probabilities": calibrated_probs,
+        "img_rgb": img_rgb,
+        "overlay_rgb": overlay_rgb,
+        "heatmap_colored_rgb": heatmap_colored_rgb,
+        "quality": quality,
+        "morphology": morphology,
+        "anomalies": anomalies,
+        "clinical_guidance": clinical_guidance
+    }
 
 
 def build_result_context(record):
@@ -234,6 +283,15 @@ def build_result_context(record):
     gradcam_heatmap_url = public_asset_url(record.get('gradcam_heatmap_url') or '')
     probabilities = record.get('probabilities') or {}
     morphology = record.get('morphology') or {}
+    quality = record.get('quality') or {
+        'iqi_score': 95.0,
+        'status': 'Optimal Quality',
+        'badge_class': 'success',
+        'warnings': []
+    }
+    anomalies = record.get('anomalies') or []
+    clinical_guidance = record.get('clinical_guidance') or get_clinical_guidance(cell_type, morphology, anomalies)
+
     clinical = CLINICAL_DESCRIPTIONS.get(cell_type, {
         'title': cell_type.title(),
         'lineage': 'Hematopoietic Leukocyte',
@@ -255,10 +313,13 @@ def build_result_context(record):
         'gradcam_heatmap_url': gradcam_heatmap_url,
         'probabilities': probabilities,
         'morphology': morphology,
+        'quality': quality,
+        'anomalies': anomalies,
+        'clinical_guidance': clinical_guidance,
         'clinical': clinical,
         'status': record.get('status', 'completed'),
         'filename': record.get('filename', 'specimen_smear.jpg'),
-        'model': record.get('model', 'Deep CNN (27 Layers / TensorFlow-Keras)'),
+        'model': record.get('model', 'Deep CNN (27 Layers / Hybrid Neuro-Symbolic AI)'),
         'timestamp': record.get('timestamp', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')),
         'error': record.get('error')
     }
@@ -269,12 +330,14 @@ def get_model_health():
     return {
         'status': 'ok' if model is not None else 'offline',
         'model_loaded': model is not None,
-        'model_name': 'Blood Cell Deep CNN',
+        'model_name': 'Blood Cell Hybrid Neuro-Symbolic AI',
         'model_format': 'Keras v3 / TensorFlow',
         'input_shape': [224, 224, 3],
         'classes': class_labels,
         'layers_count': len(model.layers) if model is not None else 27,
         'total_parameters': total_params,
+        'accuracy_enhancements': ['Test-Time Augmentation (5-View TTA)', 'Bayesian Cytometry Prior Calibration'],
+        'quality_system': 'Automated Image Quality Index (IQI)',
         'explainability': 'Grad-CAM (Gradient-weighted Class Activation Mapping)',
         'cytometry_engine': 'OpenCV Morphological Profiler'
     }
@@ -340,26 +403,17 @@ def analysis_page():
         upload.save(upload_path)
 
         try:
-            # 1. AI Classification
-            predicted_class_label, img_rgb, confidence, probabilities, pred_idx = predict_image_class(upload_path, model)
+            # Multi-stage evaluation
+            eval_res = evaluate_specimen_full(upload_path, model, use_tta=True)
 
-            # 2. Grad-CAM Explainability Generation
-            overlay_rgb, heatmap_norm, heatmap_colored_rgb = generate_gradcam_overlay(
-                model=model,
-                img_rgb=img_rgb,
-                target_class_idx=pred_idx,
-                alpha=0.55
-            )
+            # Save Grad-CAM artifacts
             gradcam_overlay_url, gradcam_heatmap_url = save_gradcam_images(
-                img_rgb=img_rgb,
-                overlay_rgb=overlay_rgb,
-                heatmap_colored_rgb=heatmap_colored_rgb,
+                img_rgb=eval_res["img_rgb"],
+                overlay_rgb=eval_res["overlay_rgb"],
+                heatmap_colored_rgb=eval_res["heatmap_colored_rgb"],
                 base_dir=app.config['UPLOAD_FOLDER'],
                 filename_stem=stem
             )
-
-            # 3. Morphological Biomarker Extraction
-            morphology = analyze_morphology(img_rgb)
 
             record_id = str(uuid.uuid4())
             record = {
@@ -369,12 +423,15 @@ def analysis_page():
                 'image_path': public_asset_url(f'/uploads/{unique_name}'),
                 'gradcam_overlay_url': public_asset_url(gradcam_overlay_url),
                 'gradcam_heatmap_url': public_asset_url(gradcam_heatmap_url),
-                'cell_type': predicted_class_label,
-                'confidence': round(confidence * 100, 1),
-                'probabilities': {label: round(float(value), 4) for label, value in probabilities.items()},
-                'morphology': morphology,
+                'cell_type': eval_res["pred_label"],
+                'confidence': round(eval_res["confidence"] * 100, 1),
+                'probabilities': {label: round(float(value), 4) for label, value in eval_res["probabilities"].items()},
+                'morphology': eval_res["morphology"],
+                'quality': eval_res["quality"],
+                'anomalies': eval_res["anomalies"],
+                'clinical_guidance': eval_res["clinical_guidance"],
                 'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
-                'model': 'Deep CNN (27 Layers / TensorFlow-Keras)',
+                'model': 'Deep CNN (27 Layers / Hybrid Neuro-Symbolic AI)',
                 'status': 'completed'
             }
             add_history_entry(record)
@@ -403,21 +460,14 @@ def test_sample(cell_type):
     shutil.copyfile(source_path, dest_path)
 
     try:
-        predicted_class_label, img_rgb, confidence, probabilities, pred_idx = predict_image_class(dest_path, model)
-        overlay_rgb, heatmap_norm, heatmap_colored_rgb = generate_gradcam_overlay(
-            model=model,
-            img_rgb=img_rgb,
-            target_class_idx=pred_idx,
-            alpha=0.55
-        )
+        eval_res = evaluate_specimen_full(dest_path, model, use_tta=True)
         gradcam_overlay_url, gradcam_heatmap_url = save_gradcam_images(
-            img_rgb=img_rgb,
-            overlay_rgb=overlay_rgb,
-            heatmap_colored_rgb=heatmap_colored_rgb,
+            img_rgb=eval_res["img_rgb"],
+            overlay_rgb=eval_res["overlay_rgb"],
+            heatmap_colored_rgb=eval_res["heatmap_colored_rgb"],
             base_dir=app.config['UPLOAD_FOLDER'],
             filename_stem=stem
         )
-        morphology = analyze_morphology(img_rgb)
 
         record_id = str(uuid.uuid4())
         record = {
@@ -427,12 +477,15 @@ def test_sample(cell_type):
             'image_path': public_asset_url(f'/uploads/{dest_name}'),
             'gradcam_overlay_url': public_asset_url(gradcam_overlay_url),
             'gradcam_heatmap_url': public_asset_url(gradcam_heatmap_url),
-            'cell_type': predicted_class_label,
-            'confidence': round(confidence * 100, 1),
-            'probabilities': {label: round(float(value), 4) for label, value in probabilities.items()},
-            'morphology': morphology,
+            'cell_type': eval_res["pred_label"],
+            'confidence': round(eval_res["confidence"] * 100, 1),
+            'probabilities': {label: round(float(value), 4) for label, value in eval_res["probabilities"].items()},
+            'morphology': eval_res["morphology"],
+            'quality': eval_res["quality"],
+            'anomalies': eval_res["anomalies"],
+            'clinical_guidance': eval_res["clinical_guidance"],
             'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
-            'model': 'Deep CNN (27 Layers / TensorFlow-Keras)',
+            'model': 'Deep CNN (27 Layers / Hybrid Neuro-Symbolic AI)',
             'status': 'completed'
         }
         add_history_entry(record)
@@ -462,22 +515,26 @@ def batch_analysis_page():
                 upload.save(upload_path)
 
                 try:
-                    pred_label, img_rgb, conf, probs, pred_idx = predict_image_class(upload_path, model)
+                    eval_res = evaluate_specimen_full(upload_path, model, use_tta=False)
+                    pred_label = eval_res["pred_label"]
                     counts[pred_label] = counts.get(pred_label, 0) + 1
 
-                    overlay_rgb, _, heatmap_colored_rgb = generate_gradcam_overlay(model, img_rgb, pred_idx)
-                    overlay_url, heatmap_url = save_gradcam_images(img_rgb, overlay_rgb, heatmap_colored_rgb, app.config['UPLOAD_FOLDER'], stem)
-                    morphology = analyze_morphology(img_rgb)
+                    overlay_url, heatmap_url = save_gradcam_images(
+                        eval_res["img_rgb"], eval_res["overlay_rgb"], eval_res["heatmap_colored_rgb"],
+                        app.config['UPLOAD_FOLDER'], stem
+                    )
 
                     record_id = str(uuid.uuid4())
                     entry = {
                         'id': record_id,
                         'filename': safe_name,
                         'cell_type': pred_label,
-                        'confidence': round(conf * 100, 1),
+                        'confidence': round(eval_res["confidence"] * 100, 1),
                         'image_path': public_asset_url(f'/uploads/{unique_name}'),
                         'gradcam_overlay_url': public_asset_url(overlay_url),
-                        'morphology': morphology,
+                        'morphology': eval_res["morphology"],
+                        'quality': eval_res["quality"],
+                        'anomalies': eval_res["anomalies"],
                         'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
                         'status': 'completed'
                     }
@@ -503,6 +560,18 @@ def batch_analysis_page():
         )
 
     return render_template('batch.html', page='batch')
+
+
+@app.route('/microscope')
+def microscope_page():
+    """Interactive virtual slide microscope and leukocyte counter."""
+    return render_template('microscope.html', page='microscope', cells=library_cell_types)
+
+
+@app.route('/quiz')
+def quiz_page():
+    """Hematology resident cytological challenge and quiz mode."""
+    return render_template('quiz.html', page='quiz', classes=class_labels)
 
 
 @app.route('/result/<record_id>')
@@ -566,13 +635,73 @@ def settings_page():
 
 @app.route('/api/docs')
 def api_docs_page():
-    """Interactive REST API Documentation & Playground."""
     return render_template('api_docs.html', page='api_docs', health=get_model_health())
 
 
 # ============================================================================
-# RESTful API Endpoints
+# Interactive Copilot & Quiz REST API Endpoints
 # ============================================================================
+
+@app.route('/api/copilot/ask', methods=['POST'])
+def api_copilot_ask():
+    """Interactive Clinical Copilot Query Endpoint."""
+    data = request.get_json() or {}
+    question = data.get('question', '')
+    context = data.get('context', {})
+
+    if not question:
+        return jsonify({'error': 'Question parameter is required.'}), 400
+
+    response_text = copilot_query_engine(question, context)
+    return jsonify({
+        'success': True,
+        'question': question,
+        'response': response_text
+    })
+
+
+@app.route('/api/quiz/question', methods=['GET'])
+def api_quiz_question():
+    """Return a blinded cell question for the resident quiz."""
+    chosen_label = random.choice(class_labels)
+    sample_img = public_asset_url(CELL_LIBRARY_ASSETS.get(chosen_label))
+    
+    # Shuffle options
+    options = list(class_labels)
+    random.shuffle(options)
+
+    return jsonify({
+        'status': 'success',
+        'image_url': sample_img,
+        'options': [opt.title() for opt in options],
+        'cell_token': base64.b64encode(chosen_label.encode('utf-8')).decode('utf-8')
+    })
+
+
+@app.route('/api/quiz/check', methods=['POST'])
+def api_quiz_check():
+    """Verify quiz answer and provide clinical morphological explanation."""
+    data = request.get_json() or {}
+    user_answer = str(data.get('answer', '')).lower().strip()
+    cell_token = data.get('cell_token', '')
+
+    try:
+        correct_cell = base64.b64decode(cell_token.encode('utf-8')).decode('utf-8').lower().strip()
+    except Exception:
+        return jsonify({'error': 'Invalid token'}), 400
+
+    is_correct = (user_answer == correct_cell)
+    guidance = CLINICAL_DESCRIPTIONS.get(correct_cell, {})
+
+    return jsonify({
+        'is_correct': is_correct,
+        'correct_answer': correct_cell.title(),
+        'user_answer': user_answer.title(),
+        'explanation': guidance.get('key_features', ''),
+        'clinical_relevance': guidance.get('clinical_significance', ''),
+        'normal_differential': guidance.get('normal_differential', '')
+    })
+
 
 @app.route('/api/health')
 def api_health():
@@ -584,7 +713,6 @@ def api_health():
 
 @app.route('/api/samples')
 def api_samples():
-    """Return available benchmark test samples."""
     return jsonify({
         'status': 'success',
         'samples': build_library_cell_types()
@@ -593,7 +721,7 @@ def api_samples():
 
 @app.route('/api/predict', methods=['POST'])
 def api_predict():
-    """Predict cell classification, generate Grad-CAM, and extract morphology."""
+    """Full inference with TTA, quality index, cytometry calibration, and anomalies."""
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded.'}), 400
 
@@ -610,10 +738,11 @@ def api_predict():
     upload.save(upload_path)
 
     try:
-        pred_label, img_rgb, confidence, probabilities, pred_idx = predict_image_class(upload_path, model)
-        overlay_rgb, heatmap_norm, heatmap_colored_rgb = generate_gradcam_overlay(model, img_rgb, pred_idx)
-        overlay_url, heatmap_url = save_gradcam_images(img_rgb, overlay_rgb, heatmap_colored_rgb, app.config['UPLOAD_FOLDER'], stem)
-        morphology = analyze_morphology(img_rgb)
+        eval_res = evaluate_specimen_full(upload_path, model, use_tta=True)
+        overlay_url, heatmap_url = save_gradcam_images(
+            eval_res["img_rgb"], eval_res["overlay_rgb"], eval_res["heatmap_colored_rgb"],
+            app.config['UPLOAD_FOLDER'], stem
+        )
 
         record_id = str(uuid.uuid4())
         record = {
@@ -622,12 +751,14 @@ def api_predict():
             'image_url': public_asset_url(f'/uploads/{unique_name}'),
             'gradcam_overlay_url': public_asset_url(overlay_url),
             'gradcam_heatmap_url': public_asset_url(heatmap_url),
-            'prediction': pred_label,
-            'confidence': round(float(confidence), 6),
-            'confidence_pct': round(float(confidence * 100), 1),
-            'probabilities': {label: round(float(val), 6) for label, val in probabilities.items()},
-            'morphology': morphology,
-            'clinical_reference': CLINICAL_DESCRIPTIONS.get(pred_label, {}),
+            'prediction': eval_res["pred_label"],
+            'confidence': round(float(eval_res["confidence"]), 6),
+            'confidence_pct': round(float(eval_res["confidence"] * 100), 1),
+            'probabilities': {label: round(float(val), 6) for label, val in eval_res["probabilities"].items()},
+            'quality': eval_res["quality"],
+            'morphology': eval_res["morphology"],
+            'anomalies': eval_res["anomalies"],
+            'clinical_guidance': eval_res["clinical_guidance"],
             'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
             'model_info': get_model_health()
         }
@@ -640,7 +771,6 @@ def api_predict():
 
 @app.route('/api/morphology', methods=['POST'])
 def api_morphology():
-    """Extract quantitative cellular biomarkers from an uploaded cell image."""
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded.'}), 400
     upload = request.files['file']

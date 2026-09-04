@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Resident Cytology Challenge & Quiz | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell" style="max-width:860px; margin:0 auto;">
+    <div class="mini-header">
+        <div>
+            <h1 style="margin:0; font-size:2rem; letter-spacing:-0.05em;">Resident Cytology Challenge & Quiz</h1>
+            <p style="margin:6px 0 0; color:var(--muted);">
+                Test your cytological diagnostic skills on blinded microscopic smear specimens and benchmark your diagnosis against the AI model.
+            </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span class="badge badge-primary" id="score-badge">Score: 0 Correct</span>
+            <button class="btn btn-secondary" onclick="loadNextQuestion()">Next Specimen &rarr;</button>
+        </div>
+    </div>
+
+    <!-- Quiz Question Card -->
+    <div class="card" style="margin-top:14px; text-align:center; padding:28px;">
+        <div style="font-size:0.8rem; text-transform:uppercase; font-weight:700; color:var(--muted); letter-spacing:0.08em; margin-bottom:14px;">
+            Microscopic Specimen #<span id="question-num">1</span> (100x Oil Immersion)
+        </div>
+
+        <!-- Blinded Specimen Viewport -->
+        <div style="display:inline-flex; border-radius:18px; overflow:hidden; border:2px solid var(--line); box-shadow:var(--shadow); background:#000; margin-bottom:20px;">
+            <img id="quiz-img" src="/static/cell-library/lymphocyte.jpg" alt="Blinded Specimen" style="max-height:280px; width:auto; object-fit:contain; display:block;">
+        </div>
+
+        <h3 style="margin:0 0 16px; font-size:1.3rem;">Which leukocyte morphology is shown above?</h3>
+
+        <!-- Interactive Option Buttons -->
+        <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; max-width:540px; margin:0 auto;" id="options-grid">
+            <button class="btn btn-secondary quiz-opt" style="padding:14px; font-size:1.05rem;" onclick="submitAnswer('Neutrophil')">Neutrophil</button>
+            <button class="btn btn-secondary quiz-opt" style="padding:14px; font-size:1.05rem;" onclick="submitAnswer('Lymphocyte')">Lymphocyte</button>
+            <button class="btn btn-secondary quiz-opt" style="padding:14px; font-size:1.05rem;" onclick="submitAnswer('Monocyte')">Monocyte</button>
+            <button class="btn btn-secondary quiz-opt" style="padding:14px; font-size:1.05rem;" onclick="submitAnswer('Eosinophil')">Eosinophil</button>
+        </div>
+
+        <!-- Feedback & Explanation Panel (Initially Hidden) -->
+        <div id="feedback-panel" style="display:none; margin-top:24px; padding:18px; border-radius:14px; text-align:left; animation: fadeIn 0.3s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h4 id="feedback-title" style="margin:0; font-size:1.2rem;"></h4>
+                <span class="badge" id="feedback-badge"></span>
+            </div>
+            <p id="feedback-explanation" style="margin:0 0 10px; font-size:0.9rem; line-height:1.5;"></p>
+            <div style="font-size:0.8rem; color:var(--muted); border-top:1px solid rgba(0,0,0,0.1); padding-top:8px;" id="feedback-meta"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentToken = '';
+    let correctCount = 0;
+    let totalQuestions = 0;
+
+    async function loadNextQuestion() {
+        const feedback = document.getElementById('feedback-panel');
+        if (feedback) feedback.style.display = 'none';
+
+        document.querySelectorAll('.quiz-opt').forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+        });
+
+        try {
+            const res = await fetch('/api/quiz/question');
+            const data = await res.json();
+            if (data.status === 'success') {
+                document.getElementById('quiz-img').src = data.image_url;
+                currentToken = data.cell_token;
+                totalQuestions++;
+                document.getElementById('question-num').textContent = totalQuestions;
+
+                const grid = document.getElementById('options-grid');
+                grid.innerHTML = '';
+                data.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-secondary quiz-opt';
+                    btn.style.padding = '14px';
+                    btn.style.fontSize = '1.05rem';
+                    btn.textContent = opt;
+                    btn.onclick = () => submitAnswer(opt);
+                    grid.appendChild(btn);
+                });
+            }
+        } catch (e) {
+            console.error('Failed to load quiz question', e);
+        }
+    }
+
+    async function submitAnswer(answer) {
+        document.querySelectorAll('.quiz-opt').forEach(btn => btn.disabled = true);
+
+        try {
+            const res = await fetch('/api/quiz/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ answer: answer, cell_token: currentToken })
+            });
+            const data = await res.json();
+
+            const feedback = document.getElementById('feedback-panel');
+            const title = document.getElementById('feedback-title');
+            const badge = document.getElementById('feedback-badge');
+            const exp = document.getElementById('feedback-explanation');
+            const meta = document.getElementById('feedback-meta');
+
+            feedback.style.display = 'block';
+
+            if (data.is_correct) {
+                correctCount++;
+                feedback.style.background = 'rgba(17,165,125,0.12)';
+                feedback.style.border = '1px solid rgba(17,165,125,0.3)';
+                title.style.color = '#11a57d';
+                title.textContent = '✔ Correct Diagnosis!';
+                badge.className = 'badge badge-success';
+                badge.textContent = data.correct_answer;
+            } else {
+                feedback.style.background = 'rgba(239,68,68,0.1)';
+                feedback.style.border = '1px solid rgba(239,68,68,0.3)';
+                title.style.color = '#dc2626';
+                title.textContent = `✘ Incorrect. Identified as: ${data.correct_answer}`;
+                badge.className = 'badge badge-danger';
+                badge.textContent = `Your Choice: ${data.user_answer}`;
+            }
+
+            document.getElementById('score-badge').textContent = `Score: ${correctCount} / ${totalQuestions} Correct`;
+            exp.textContent = data.explanation;
+            meta.innerHTML = `<strong>Clinical Significance:</strong> ${data.clinical_relevance} · <strong>Normal Differential:</strong> ${data.normal_differential}`;
+
+        } catch (e) {
+            console.error('Quiz check failed', e);
+        }
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', loadNextQuestion);
+</script>
+{% endblock %}

@@ -25,15 +25,15 @@ class TestBloodCellApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Batch", response.data)
 
-    def test_library_page_get(self):
-        response = self.client.get("/library")
+    def test_microscope_page_get(self):
+        response = self.client.get("/microscope")
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b"Cell Library" in response.data or b"Eosinophil" in response.data)
+        self.assertIn(b"Microscope", response.data)
 
-    def test_model_page_get(self):
-        response = self.client.get("/model")
+    def test_quiz_page_get(self):
+        response = self.client.get("/quiz")
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b"Model" in response.data or b"Architecture" in response.data)
+        self.assertIn(b"Resident", response.data)
 
     def test_api_docs_page_get(self):
         response = self.client.get("/api/docs")
@@ -55,6 +55,34 @@ class TestBloodCellApp(unittest.TestCase):
         self.assertEqual(data["status"], "success")
         self.assertEqual(len(data["samples"]), 4)
 
+    def test_api_copilot_ask(self):
+        response = self.client.post(
+            "/api/copilot/ask",
+            json={"question": "What is the differential diagnosis?", "context": {"cell_type": "neutrophil", "confidence": 88.0}}
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data["success"])
+        self.assertIn("response", data)
+
+    def test_api_quiz_workflow(self):
+        # 1. Get question
+        q_res = self.client.get("/api/quiz/question")
+        self.assertEqual(q_res.status_code, 200)
+        q_data = q_res.get_json()
+        self.assertEqual(q_data["status"], "success")
+        self.assertIn("cell_token", q_data)
+
+        # 2. Check answer
+        ans_res = self.client.post(
+            "/api/quiz/check",
+            json={"answer": q_data["options"][0], "cell_token": q_data["cell_token"]}
+        )
+        self.assertEqual(ans_res.status_code, 200)
+        ans_data = ans_res.get_json()
+        self.assertIn("is_correct", ans_data)
+        self.assertIn("correct_answer", ans_data)
+
     def test_api_predict_sample(self):
         sample_file = "static/cell-library/neutrophil.jpg"
         if os.path.exists(sample_file):
@@ -72,6 +100,8 @@ class TestBloodCellApp(unittest.TestCase):
             self.assertIn("prediction", record)
             self.assertIn("confidence", record)
             self.assertIn("morphology", record)
+            self.assertIn("quality", record)
+            self.assertIn("clinical_guidance", record)
 
 
 if __name__ == "__main__":

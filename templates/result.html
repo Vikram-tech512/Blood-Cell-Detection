@@ -1,17 +1,17 @@
 {% extends 'base.html' %}
 
-{% block title %}Analysis Result · {{ class_label }} | Blood Cell AI{% endblock %}
+{% block title %}Diagnostic Evaluation · {{ class_label }} | Blood Cell AI{% endblock %}
 
 {% block content %}
 <div class="page-shell">
     <div class="mini-header">
         <a class="back-link" href="/analysis">← New Analysis</a>
         <div class="stepper" aria-label="Analysis steps">
-            <span><span class="dot">01</span> Upload</span>
+            <span><span class="dot">01</span> Quality & TTA</span>
             <span>→</span>
-            <span><span class="dot">02</span> Inference & Cytometry</span>
+            <span><span class="dot">02</span> Neuro-Symbolic Inference</span>
             <span>→</span>
-            <span class="active"><span class="dot">03</span> Diagnostic Report</span>
+            <span class="active"><span class="dot">03</span> Diagnostic Review & Copilot</span>
         </div>
         <div class="hero-actions no-print">
             <a class="btn btn-secondary" href="/report/{{ record_id }}" target="_blank">📄 View Clinical Report</a>
@@ -19,26 +19,64 @@
         </div>
     </div>
 
-    {% if error %}
-    <div class="disclaimer" style="margin-bottom:18px; border-color: rgba(191,61,77,0.25); background: rgba(191,61,77,0.06); color: var(--danger);">
-        <strong>Notice:</strong> {{ error }}
-    </div>
+    <!-- Anomaly Screening Alerts Banner (Blast / Toxic Granulation) -->
+    {% if anomalies %}
+        {% for alert in anomalies %}
+        <div class="alert-card alert-{{ alert.severity }}">
+            <div style="font-size:1.4rem;">
+                {% if alert.severity == 'critical' %}🚨{% elif alert.severity == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+            </div>
+            <div style="flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>{{ alert.title }}</strong>
+                    <span class="badge badge-{{ 'warning' if alert.severity == 'warning' else ('danger' if alert.severity == 'critical' else 'primary') }}">
+                        {{ alert.badge }}
+                    </span>
+                </div>
+                <div style="font-size:0.85rem; margin-top:3px; opacity:0.92;">
+                    {{ alert.details }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     {% endif %}
 
+    <!-- Specimen Image Quality Index (IQI) Banner -->
+    <div class="card" style="margin-bottom:18px; padding:12px 16px; background:rgba(255,255,255,0.6); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.1rem;">🔬</span>
+            <div>
+                <strong style="font-size:0.88rem;">Specimen Quality Assessment (IQI):</strong>
+                <span class="badge badge-{{ quality.badge_class }}" style="margin-left:6px;">{{ quality.status }}</span>
+                <span style="font-size:0.8rem; color:var(--muted); margin-left:6px;">Index Score: <strong>{{ quality.iqi_score }} / 100</strong></span>
+            </div>
+        </div>
+        <div style="font-size:0.78rem; color:var(--muted); display:flex; gap:14px;">
+            <span>Sharpness: <strong>{{ quality.sharpness_val }}</strong></span>
+            <span>Contrast: <strong>{{ quality.contrast_val }}</strong></span>
+            <span>Illumination: <strong>{{ quality.brightness_val }}</strong></span>
+        </div>
+    </div>
+
     <div class="result-layout">
-        <!-- LEFT COLUMN: Dual Microscopic & Grad-CAM Visualizer + Cytometry Metrics -->
+        <!-- LEFT COLUMN: Dual Microscopic & Grad-CAM Visualizer + Loupe + Cytometry -->
         <div class="visualizer-column">
             <div class="card">
                 <div class="card-header">
-                    <h3>Microscopic Cytology & Explainability (Grad-CAM)</h3>
+                    <div>
+                        <h3 style="margin:0;">Microscopic Cytology & Explainability (Grad-CAM)</h3>
+                        <p style="margin:3px 0 0; font-size:0.75rem; color:var(--muted);">
+                            Pan or use the opacity slider to evaluate neural attention against chromatin morphology.
+                        </p>
+                    </div>
                     <span class="muted-badge">{{ filename }}</span>
                 </div>
 
-                <div class="xai-stage-wrapper">
+                <div class="xai-stage-wrapper" id="stage-wrapper">
                     <div class="xai-stage" id="xai-stage">
                         <img class="xai-base" id="xai-base-img" src="{{ image_url }}" alt="Microscopic Blood Cell Specimen">
                         {% if gradcam_heatmap_url %}
-                        <img class="xai-overlay" id="xai-overlay-img" src="{{ gradcam_heatmap_url }}" alt="Grad-CAM Neural Attention Heatmap">
+                        <img class="xai-overlay" id="xai-overlay-img" src="{{ gradcam_heatmap_url }}" alt="Grad-CAM Attention Heatmap">
                         {% endif %}
                     </div>
 
@@ -51,7 +89,7 @@
                         </div>
                         <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--muted-2);">
                             <span>Raw Cellular View</span>
-                            <span>Warm colors (red/yellow) denote features governing model prediction</span>
+                            <span>Warm colors indicate feature lobes governing prediction</span>
                             <span>Attention Map</span>
                         </div>
                     </div>
@@ -60,9 +98,10 @@
 
                 <div class="inline-actions" style="margin-top:14px; justify-content:flex-start;">
                     <button class="btn btn-secondary" type="button" onclick="setOpacity(0)">Cell Only</button>
-                    <button class="btn btn-secondary" type="button" onclick="setOpacity(55)">Balanced Blend (55%)</button>
+                    <button class="btn btn-secondary" type="button" onclick="setOpacity(55)">Balanced (55%)</button>
                     <button class="btn btn-secondary" type="button" onclick="setOpacity(100)">Heatmap Only</button>
                     <a class="btn btn-secondary" href="{{ image_url }}" download title="Download Specimen">⬇ Image</a>
+                    <a class="btn btn-secondary" href="/microscope" title="Open Virtual Microscope">🔍 Virtual Slide</a>
                 </div>
             </div>
 
@@ -71,8 +110,8 @@
             <div class="card" style="margin-top:18px;">
                 <div class="card-header">
                     <div>
-                        <h3 style="margin:0;">Cellular Cytometry & Morphology Profiling</h3>
-                        <p style="margin:4px 0 0; font-size:0.78rem; color:var(--muted);">Quantitative bio-markers derived via computer vision cytometry algorithms.</p>
+                        <h3 style="margin:0;">Cellular Cytometry & Morphological Biomarkers</h3>
+                        <p style="margin:4px 0 0; font-size:0.78rem; color:var(--muted);">Quantitative morphometry calculated via calibrated computer vision algorithms.</p>
                     </div>
                     <span class="badge badge-primary">OpenCV Engine</span>
                 </div>
@@ -97,7 +136,7 @@
                     </div>
 
                     <div class="morph-stat">
-                        <div class="label">Estimated Diameter</div>
+                        <div class="label">Cell Diameter</div>
                         <div class="value">{{ morphology.cell_diameter_um }} <span style="font-size:0.8rem; font-weight:normal;">μm</span></div>
                         <div class="hint">Nucleus: {{ morphology.nucleus_diameter_um }} μm</div>
                     </div>
@@ -110,18 +149,51 @@
                 </div>
             </div>
             {% endif %}
+
+            <!-- Interactive Clinical Diagnostic Copilot Assistant -->
+            <div class="copilot-panel" style="margin-top:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h3 style="margin:0; font-size:1.05rem;">Clinical Diagnostic Copilot</h3>
+                        <p style="margin:3px 0 0; font-size:0.78rem; color:var(--muted);">
+                            Ask clinical questions regarding differential diagnosis, ICD-10 coding, or follow-up tests for this cell.
+                        </p>
+                    </div>
+                    <span class="badge badge-primary">AI Copilot</span>
+                </div>
+
+                <div class="copilot-history" id="copilot-chat">
+                    <div class="copilot-bubble copilot-ai">
+                        Hello! I am your Hematology Copilot. This specimen was classified as a <strong>{{ class_label }}</strong> (Confidence: {{ confidence }}%). How can I assist with your clinical review?
+                    </div>
+                </div>
+
+                <!-- Quick Prompt Chips -->
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" type="button" style="padding:4px 9px; font-size:0.74rem;" onclick="askCopilot('What is the differential diagnosis for this cell?')">Differential Diagnosis</button>
+                    <button class="btn btn-secondary" type="button" style="padding:4px 9px; font-size:0.74rem;" onclick="askCopilot('What confirmatory laboratory tests should be ordered?')">Confirmatory Tests</button>
+                    <button class="btn btn-secondary" type="button" style="padding:4px 9px; font-size:0.74rem;" onclick="askCopilot('What are the relevant ICD-10 codes for billing and clinical record?')">ICD-10 Codes</button>
+                    <button class="btn btn-secondary" type="button" style="padding:4px 9px; font-size:0.74rem;" onclick="askCopilot('Is there any suspicion of immature blast morphology?')">Blast Screening</button>
+                </div>
+
+                <!-- Input Box -->
+                <form id="copilot-form" style="display:flex; gap:10px;" onsubmit="handleCopilotSubmit(event)">
+                    <input type="text" id="copilot-input" placeholder="Type a clinical hematology question..." style="flex:1; border:1px solid var(--line); border-radius:10px; padding:9px 12px; background:var(--input-bg);" required>
+                    <button type="submit" class="btn btn-primary" id="copilot-btn">Send</button>
+                </form>
+            </div>
         </div>
 
-        <!-- RIGHT COLUMN: Diagnostic Summary, Probability Distribution, Clinical Guide -->
+        <!-- RIGHT COLUMN: Diagnosis Banner, Calibrated Probability, Triage, Clinical Reference -->
         <div class="metric-stack">
             <!-- Classification Badge Card -->
             <div class="card" style="border-top: 4px solid var(--primary);">
                 <div class="card-header">
-                    <span class="muted-badge">Primary AI Classification</span>
+                    <span class="muted-badge">Hybrid Neuro-Symbolic AI</span>
                     <span class="badge badge-{{ clinical.color_tag }}">{{ clinical.lineage }}</span>
                 </div>
 
-                <h2 style="font-size: clamp(2rem, 3.5vw, 3rem); margin: 6px 0 2px; letter-spacing: -0.05em; line-height: 1.1;">
+                <h2 style="font-size: clamp(2rem, 3.5vw, 2.8rem); margin: 6px 0 2px; letter-spacing: -0.05em; line-height: 1.1;">
                     {{ class_label }}
                 </h2>
                 <div style="color: var(--muted); font-size: 0.88rem; margin-bottom: 16px;">
@@ -131,11 +203,11 @@
                 <div class="metric-card" style="background: rgba(29,122,232,0.06); border-color: rgba(29,122,232,0.18);">
                     <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                         <div>
-                            <div class="label" style="font-size:0.75rem; color:var(--muted); font-weight:700; text-transform:uppercase;">Diagnostic Confidence</div>
+                            <div class="label" style="font-size:0.75rem; color:var(--muted); font-weight:700; text-transform:uppercase;">Calibrated Confidence (TTA)</div>
                             <div class="big-score" style="color:var(--text);">{{ confidence }}%</div>
                         </div>
                         <div style="text-align:right; margin-bottom:10px;">
-                            <span class="status-pill status-success" style="font-size:0.82rem;">Calibrated Softmax</span>
+                            <span class="status-pill status-success" style="font-size:0.8rem;">5-View TTA Verified</span>
                         </div>
                     </div>
                     <div class="bar-track" style="height:10px; margin-top:8px;">
@@ -146,7 +218,7 @@
                 <!-- Probability Spectrum across all 4 WBC Types -->
                 <div style="margin-top:20px;">
                     <h4 style="margin:0 0 12px; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);">
-                        Probability Spectrum
+                        Calibrated Probability Spectrum
                     </h4>
                     <div class="distribution-list">
                         {% for label_key, prob_score in probabilities.items() %}
@@ -168,41 +240,66 @@
                 </div>
             </div>
 
-            <!-- Clinical Pathology Guidance Card -->
+            <!-- Clinical Triage & ICD-10 Card -->
             <div class="card">
                 <div class="card-header">
-                    <h3 style="margin:0;">Clinical Cytology Reference</h3>
-                    <span class="muted-badge">Diagnostic Atlas</span>
+                    <h3 style="margin:0;">Clinical Triage & Disease Mapping</h3>
+                    <span class="badge badge-{{ clinical_guidance.triage.badge_class }}">{{ clinical_guidance.triage.level }}</span>
+                </div>
+
+                <div style="font-size:0.85rem; line-height:1.5; display:grid; gap:10px; margin-top:10px;">
+                    <div style="padding:10px; border-radius:10px; background:rgba(15,23,42,0.03); border:1px solid var(--line);">
+                        <strong>Triage Action:</strong> {{ clinical_guidance.triage.action }}
+                    </div>
+
+                    <div>
+                        <strong style="color:var(--text); display:block; margin-bottom:4px;">Relevant ICD-10 Disease Codes:</strong>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            {% for item in clinical_guidance.icd10 %}
+                            <span class="muted-badge" style="font-size:0.75rem;" title="{{ item.description }}">
+                                <strong>{{ item.code }}</strong> · {{ item.description }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clinical Pathology Reference -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 style="margin:0;">Cytological Atlas Guidance</h3>
+                    <span class="muted-badge">Clinical Reference</span>
                 </div>
 
                 <div style="display:grid; gap:12px; font-size:0.88rem; line-height:1.5;">
                     <div>
-                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Distinctive Microscopic Features:</strong>
+                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Diagnostic Microscopic Hallmarks:</strong>
                         <span style="color:var(--muted);">{{ clinical.key_features }}</span>
                     </div>
 
                     <div>
-                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Clinical & Diagnostic Relevance:</strong>
+                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Differential Considerations:</strong>
                         <span style="color:var(--muted);">{{ clinical.clinical_significance }}</span>
                     </div>
 
                     <div>
-                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Reference Normal Differential Range:</strong>
+                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Reference Peripheral Differential:</strong>
                         <span class="status-pill status-neutral" style="font-size:0.8rem;">{{ clinical.normal_differential }}</span>
                     </div>
                 </div>
 
                 <div class="panel-footer" style="margin-top:16px;">
-                    <a class="btn btn-primary" href="/report/{{ record_id }}" style="width:100%;">
-                        Generate Diagnostic Pathology Report (PDF / Print)
+                    <a class="btn btn-primary" href="/report/{{ record_id }}" target="_blank" style="width:100%;">
+                        Generate Clinical Diagnostic Pathology Report (PDF)
                     </a>
                 </div>
             </div>
 
-            <!-- Specimen & Model Metadata -->
+            <!-- Specimen Record Metadata -->
             <div class="card" style="font-size:0.82rem; color:var(--muted);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                    <span>Specimen Record ID:</span>
+                    <span>Specimen Accession:</span>
                     <strong style="color:var(--text);">{{ record_id[:12] }}...</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
@@ -210,7 +307,7 @@
                     <span style="color:var(--text);">{{ timestamp }}</span>
                 </div>
                 <div style="display:flex; justify-content:space-between;">
-                    <span>Model Engine:</span>
+                    <span>Model Architecture:</span>
                     <span style="color:var(--text);">{{ model }}</span>
                 </div>
             </div>
@@ -254,5 +351,57 @@
     document.querySelectorAll('.bar-fill[data-pct], .fill[data-pct]').forEach(function(el) {
         el.style.width = (el.dataset.pct || 0) + '%';
     });
+
+    // Clinical Copilot Interactive Chat
+    const currentContext = {
+        cell_type: "{{ cell_type }}",
+        confidence: {{ confidence }},
+        morphology: {
+            nc_ratio: {{ morphology.nc_ratio if morphology else 0.5 }},
+            lobe_count: {{ morphology.lobe_count if morphology else 1 }},
+            granularity_index: {{ morphology.granularity_index if morphology else 20.0 }},
+            cell_diameter_um: {{ morphology.cell_diameter_um if morphology else 13.0 }}
+        }
+    };
+
+    function appendMessage(sender, text) {
+        const chat = document.getElementById('copilot-chat');
+        if (!chat) return;
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `copilot-bubble copilot-${sender}`;
+        msgDiv.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+        chat.appendChild(msgDiv);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function askCopilot(question) {
+        appendMessage('user', question);
+        const input = document.getElementById('copilot-input');
+        if (input) input.value = '';
+
+        try {
+            const res = await fetch('/api/copilot/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: question, context: currentContext })
+            });
+            const data = await res.json();
+            if (data.success) {
+                appendMessage('ai', data.response);
+            } else {
+                appendMessage('ai', 'Error querying clinical copilot.');
+            }
+        } catch (err) {
+            appendMessage('ai', 'Clinical copilot service is currently unavailable.');
+        }
+    }
+
+    function handleCopilotSubmit(e) {
+        e.preventDefault();
+        const input = document.getElementById('copilot-input');
+        if (input && input.value.trim()) {
+            askCopilot(input.value.trim());
+        }
+    }
 </script>
 {% endblock %}

@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+
+{% block title %}Virtual Slide Microscope & Cell Counter | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+    <div class="mini-header">
+        <div>
+            <h1 style="margin:0; font-size:2rem; letter-spacing:-0.05em;">Interactive Virtual Microscope & Cell Counter</h1>
+            <p style="margin:6px 0 0; color:var(--muted);">
+                Simulate clinical light microscopy (10x, 40x, 100x Oil Immersion). Pan across high-power fields and perform manual differential cell tallies.
+            </p>
+        </div>
+        <div class="hero-actions">
+            <button class="btn btn-secondary" onclick="resetMicroscope()">Reset Viewport</button>
+            <a class="btn btn-primary" href="/batch">Batch Differential</a>
+        </div>
+    </div>
+
+    <div class="result-layout" style="grid-template-columns: 1.35fr 0.65fr;">
+        <!-- VIRTUAL MICROSCOPE STAGE -->
+        <div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div class="card-header" style="padding:14px 18px; margin:0; border-bottom:1px solid var(--line);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span>🔬 Objective:</span>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-secondary mag-btn" style="padding:4px 10px; font-size:0.75rem;" onclick="setMag(1, '10x Low Power')">10x</button>
+                        <button class="btn btn-secondary mag-btn" style="padding:4px 10px; font-size:0.75rem;" onclick="setMag(1.8, '40x High Dry')">40x</button>
+                        <button class="btn btn-primary mag-btn" style="padding:4px 10px; font-size:0.75rem;" onclick="setMag(2.6, '100x Oil Immersion')">100x Oil</button>
+                    </div>
+                </div>
+                <span class="badge badge-primary" id="mag-label">100x Oil Immersion</span>
+            </div>
+
+            <!-- Microscope Ocular Viewport (Circular Diaphragm Mask) -->
+            <div style="background:#090d16; min-height:480px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; user-select:none; cursor:grab;" id="viewport">
+                <!-- Circular Diaphragm Overlay -->
+                <div style="width:440px; height:440px; border-radius:50%; border:3px solid rgba(255,255,255,0.18); box-shadow:0 0 0 9999px #090d16, inset 0 0 50px rgba(0,0,0,0.6); position:absolute; pointer-events:none; z-index:10;">
+                    <!-- Reticle Crosshair -->
+                    <div style="position:absolute; top:50%; left:0; right:0; height:1px; background:rgba(255,255,255,0.15);"></div>
+                    <div style="position:absolute; left:50%; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.15);"></div>
+                </div>
+
+                <!-- Pan/Zoom Micrograph Content -->
+                <div id="slide-stage" style="transform: scale(2.6) translate(0px, 0px); transition: transform 0.15s ease-out; transform-origin:center center;">
+                    <img id="active-slide" src="/static/cell-library/neutrophil.jpg" alt="Blood Smear Slide" style="width:360px; height:270px; object-fit:cover; display:block; filter:contrast(1.05) brightness(1.02);">
+                </div>
+
+                <!-- Slide Selector Overlay (Bottom Left) -->
+                <div style="position:absolute; bottom:14px; left:14px; z-index:20; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:10px; padding:6px 10px; display:flex; gap:8px;">
+                    {% for c in cells %}
+                    <button type="button" class="btn btn-secondary" style="padding:3px 8px; font-size:0.72rem; color:#fff;" onclick="switchSlide('{{ c.image }}', '{{ c.name }}')">
+                        {{ c.name }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Fine Focus & Controls Footer -->
+            <div style="padding:12px 18px; background:var(--card-bg); border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--muted);">
+                <span>Drag to pan across smear · Click specimen tabs to change fields</span>
+                <span id="coord-display">HPF Coordinates: X: 142.0 μm, Y: 88.5 μm</span>
+            </div>
+        </div>
+
+        <!-- LEUKOCYTE DIFFERENTIAL TALLY COUNTER -->
+        <div class="metric-stack">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Manual 100-Cell Differential Counter</h3>
+                    <span class="muted-badge" id="total-tally-badge">0 / 100 Counted</span>
+                </div>
+                <p style="font-size:0.8rem; color:var(--muted); margin:0 0 14px;">
+                    Click leukocyte counters or use keyboard shortcuts (N, L, M, E) to record your peripheral smear review.
+                </p>
+
+                <div style="display:grid; gap:10px;">
+                    <!-- Neutrophil Button -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:12px; background:rgba(17,165,125,0.08); border:1px solid rgba(17,165,125,0.2);">
+                        <div>
+                            <strong>[N] Neutrophils (PMN)</strong>
+                            <div style="font-size:0.72rem; color:var(--muted);">Ref: 50% - 70%</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.4rem; font-weight:800; color:#11a57d;" id="count-neutrophil">0</span>
+                            <button class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem;" onclick="addCount('neutrophil')">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Lymphocyte Button -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:12px; background:rgba(29,122,232,0.08); border:1px solid rgba(29,122,232,0.2);">
+                        <div>
+                            <strong>[L] Lymphocytes</strong>
+                            <div style="font-size:0.72rem; color:var(--muted);">Ref: 20% - 40%</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.4rem; font-weight:800; color:#1d7ae8;" id="count-lymphocyte">0</span>
+                            <button class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem;" onclick="addCount('lymphocyte')">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Monocyte Button -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:12px; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2);">
+                        <div>
+                            <strong>[M] Monocytes</strong>
+                            <div style="font-size:0.72rem; color:var(--muted);">Ref: 2% - 8%</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.4rem; font-weight:800; color:#8b5cf6;" id="count-monocyte">0</span>
+                            <button class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem;" onclick="addCount('monocyte')">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Eosinophil Button -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2);">
+                        <div>
+                            <strong>[E] Eosinophils</strong>
+                            <div style="font-size:0.72rem; color:var(--muted);">Ref: 1% - 4%</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.4rem; font-weight:800; color:#f59e0b;" id="count-eosinophil">0</span>
+                            <button class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem;" onclick="addCount('eosinophil')">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-footer" style="margin-top:16px; display:flex; justify-content:space-between;">
+                    <button class="btn btn-secondary" onclick="resetTally()">Reset Tally</button>
+                    <button class="btn btn-primary" onclick="alertTallySummary()">Compute % Summary</button>
+                </div>
+            </div>
+
+            <!-- Microscope Scale Calibration -->
+            <div class="card" style="font-size:0.82rem; color:var(--muted);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>Field of View (FOV):</span>
+                    <strong style="color:var(--text);">220 μm Diameter</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>Numerical Aperture (NA):</span>
+                    <span style="color:var(--text);">1.25 Plan Achromat</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>Immersion Medium:</span>
+                    <span style="color:var(--text);">Synthetic Cedar Oil (n = 1.515)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Virtual Microscope Panning & Zoom Logic
+    let currentScale = 2.6;
+    let posX = 0;
+    let posY = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    const stage = document.getElementById('slide-stage');
+    const viewport = document.getElementById('viewport');
+    const coordDisplay = document.getElementById('coord-display');
+
+    function updateTransform() {
+        if (stage) {
+            stage.style.transform = `scale(${currentScale}) translate(${posX}px, ${posY}px)`;
+        }
+        if (coordDisplay) {
+            coordDisplay.textContent = `HPF Coordinates: X: ${(142 + posX * 0.4).toFixed(1)} μm, Y: ${(88 + posY * 0.4).toFixed(1)} μm`;
+        }
+    }
+
+    function setMag(scale, label) {
+        currentScale = scale;
+        document.getElementById('mag-label').textContent = label;
+        updateTransform();
+    }
+
+    function resetMicroscope() {
+        currentScale = 2.6;
+        posX = 0;
+        posY = 0;
+        document.getElementById('mag-label').textContent = '100x Oil Immersion';
+        updateTransform();
+    }
+
+    function switchSlide(url, name) {
+        const img = document.getElementById('active-slide');
+        if (img) img.src = url;
+    }
+
+    if (viewport) {
+        viewport.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX - posX;
+            startY = e.clientY - posY;
+            viewport.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            posX = e.clientX - startX;
+            posY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            if (viewport) viewport.style.cursor = 'grab';
+        });
+
+        // Wheel Zoom
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.2 : 0.2;
+            currentScale = Math.max(1.0, Math.min(4.5, currentScale + delta));
+            updateTransform();
+        });
+    }
+
+    // 100-Cell Differential Tally Counter
+    const tallies = { neutrophil: 0, lymphocyte: 0, monocyte: 0, eosinophil: 0 };
+
+    function addCount(cell) {
+        tallies[cell]++;
+        const countEl = document.getElementById(`count-${cell}`);
+        if (countEl) countEl.textContent = tallies[cell];
+        updateTotalTally();
+    }
+
+    function updateTotalTally() {
+        const total = tallies.neutrophil + tallies.lymphocyte + tallies.monocyte + tallies.eosinophil;
+        const badge = document.getElementById('total-tally-badge');
+        if (badge) badge.textContent = `${total} / 100 Counted`;
+    }
+
+    function resetTally() {
+        for (let key in tallies) {
+            tallies[key] = 0;
+            const el = document.getElementById(`count-${key}`);
+            if (el) el.textContent = '0';
+        }
+        updateTotalTally();
+    }
+
+    function alertTallySummary() {
+        const total = tallies.neutrophil + tallies.lymphocyte + tallies.monocyte + tallies.eosinophil;
+        if (total === 0) {
+            alert('No cells have been recorded in the tally yet.');
+            return;
+        }
+        const neutPct = ((tallies.neutrophil / total) * 100).toFixed(1);
+        const lymphPct = ((tallies.lymphocyte / total) * 100).toFixed(1);
+        const monoPct = ((tallies.monocyte / total) * 100).toFixed(1);
+        const eosPct = ((tallies.eosinophil / total) * 100).toFixed(1);
+
+        alert(`Manual Peripheral Smear Differential Summary (${total} Total Cells):\n\n` +
+              `• Neutrophils: ${neutPct}% (${tallies.neutrophil})\n` +
+              `• Lymphocytes: ${lymphPct}% (${tallies.lymphocyte})\n` +
+              `• Monocytes: ${monoPct}% (${tallies.monocyte})\n` +
+              `• Eosinophils: ${eosPct}% (${tallies.eosinophil})`);
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        const key = e.key.toLowerCase();
+        if (key === 'n') addCount('neutrophil');
+        else if (key === 'l') addCount('lymphocyte');
+        else if (key === 'm') addCount('monocyte');
+        else if (key === 'e') addCount('eosinophil');
+    });
+</script>
+{% endblock %}

@@ -5,6 +5,8 @@ import numpy as np
 
 from core.morphology import analyze_morphology
 from core.explainability import generate_gradcam_overlay
+from core.accuracy import assess_image_quality, calibrate_with_cytometry
+from core.copilot import detect_anomalies, get_clinical_guidance, copilot_query_engine
 
 
 class TestCytometryEngine(unittest.TestCase):
@@ -44,6 +46,35 @@ class TestCytometryEngine(unittest.TestCase):
         self.assertEqual(colored_heatmap.shape, self.img.shape)
         self.assertLessEqual(np.max(heatmap), 1.0)
         self.assertGreaterEqual(np.min(heatmap), 0.0)
+
+    def test_image_quality_assessment(self):
+        quality = assess_image_quality(self.img)
+        self.assertIn("iqi_score", quality)
+        self.assertIn("sharpness_val", quality)
+        self.assertIn("status", quality)
+        self.assertTrue(quality["passed"])
+
+    def test_cytometry_calibration(self):
+        raw_probs = {"eosinophil": 0.25, "lymphocyte": 0.25, "monocyte": 0.25, "neutrophil": 0.25}
+        morphology = {"nc_ratio": 2.2, "lobe_count": 1, "granularity_index": 10.0, "cell_diameter_um": 11.0}
+        calibrated = calibrate_with_cytometry(raw_probs, morphology, ["eosinophil", "lymphocyte", "monocyte", "neutrophil"])
+        self.assertGreater(calibrated["lymphocyte"], calibrated["neutrophil"])
+
+    def test_anomaly_detection(self):
+        # Blast simulation: high N:C ratio and large diameter
+        morphology = {"nc_ratio": 2.8, "lobe_count": 1, "granularity_index": 15.0, "cell_diameter_um": 18.0}
+        anomalies = detect_anomalies("lymphocyte", 0.90, morphology)
+        self.assertTrue(any(a["severity"] == "critical" for a in anomalies))
+
+    def test_clinical_guidance(self):
+        guidance = get_clinical_guidance("neutrophil")
+        self.assertIn("triage", guidance)
+        self.assertIn("icd10", guidance)
+        self.assertIn("confirmatory_tests", guidance)
+
+    def test_copilot_query_engine(self):
+        answer = copilot_query_engine("What is the differential diagnosis?", {"cell_type": "eosinophil", "confidence": 92.0})
+        self.assertIn("Eosinophil", answer)
 
 
 if __name__ == "__main__":

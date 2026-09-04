@@ -707,6 +707,49 @@
         .morph-stat .value { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.03em; margin: 4px 0 2px; }
         .morph-stat .hint { font-size: 0.75rem; color: var(--muted); }
 
+        /* Clinical Copilot & Loupe Styling */
+        .alert-card {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border: 1px solid transparent;
+        }
+        .alert-critical { background: rgba(220, 38, 38, 0.08); border-color: rgba(220, 38, 38, 0.28); color: #991b1b; }
+        html[data-theme="dark"] .alert-critical { background: rgba(220, 38, 38, 0.16); color: #fca5a5; }
+        .alert-warning { background: rgba(217, 119, 6, 0.08); border-color: rgba(217, 119, 6, 0.28); color: #92400e; }
+        html[data-theme="dark"] .alert-warning { background: rgba(217, 119, 6, 0.16); color: #fcd34d; }
+        .alert-info { background: rgba(29, 122, 232, 0.08); border-color: rgba(29, 122, 232, 0.28); color: #1e40af; }
+        html[data-theme="dark"] .alert-info { background: rgba(29, 122, 232, 0.16); color: #93c5fd; }
+
+        .copilot-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+        }
+        .copilot-history {
+            max-height: 240px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+        .copilot-bubble {
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 0.86rem;
+            line-height: 1.5;
+        }
+        .copilot-user { background: var(--primary); color: #fff; align-self: flex-end; max-width: 80%; }
+        .copilot-ai { background: rgba(15, 23, 42, 0.05); color: var(--text); align-self: flex-start; max-width: 90%; border: 1px solid var(--line); }
+        html[data-theme="dark"] .copilot-ai { background: rgba(255, 255, 255, 0.06); }
+
         /* Print Styles for Clinical Pathology Report */
         @media print {
             .side-nav, .topbar, .btn, .hero-actions, .no-print { display: none !important; }
@@ -727,8 +770,10 @@
                     <a class="nav-link {% if page == 'overview' %}active{% endif %}" href="/"><span class="nav-dot"></span><span class="nav-text">Overview</span></a>
                     <a class="nav-link {% if page == 'analysis' %}active{% endif %}" href="/analysis"><span class="nav-dot"></span><span class="nav-text">New Analysis</span></a>
                     <a class="nav-link {% if page == 'batch' %}active{% endif %}" href="/batch"><span class="nav-dot"></span><span class="nav-text">Batch & Differential</span></a>
+                    <a class="nav-link {% if page == 'microscope' %}active{% endif %}" href="/microscope"><span class="nav-dot"></span><span class="nav-text">Virtual Microscope</span></a>
                     <a class="nav-link {% if page == 'library' %}active{% endif %}" href="/library"><span class="nav-dot"></span><span class="nav-text">Cell Library</span></a>
                     <a class="nav-link {% if page == 'history' %}active{% endif %}" href="/history"><span class="nav-dot"></span><span class="nav-text">History</span></a>
+                    <a class="nav-link {% if page == 'quiz' %}active{% endif %}" href="/quiz"><span class="nav-dot"></span><span class="nav-text">Resident Quiz</span></a>
                     <a class="nav-link {% if page == 'model' %}active{% endif %}" href="/model"><span class="nav-dot"></span><span class="nav-text">Model Architecture</span></a>
                     <a class="nav-link {% if page == 'api_docs' %}active{% endif %}" href="/api/docs"><span class="nav-dot"></span><span class="nav-text">API Playground</span></a>
                     <a class="nav-link {% if page == 'settings' %}active{% endif %}" href="/settings"><span class="nav-dot"></span><span class="nav-text">Settings</span></a>
