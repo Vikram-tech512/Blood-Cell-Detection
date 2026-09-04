@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blood Cell Classification</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg: #f1f4f3;
+            --panel: #f7f7f6;
+            --panel-strong: #f1f1ee;
+            --sidebar: #f3f3f1;
+            --line: #dfe3df;
+            --text: #1b1f2a;
+            --muted: #5e6877;
+            --accent: #db4d69;
+            --accent-soft: #f6dfe4;
+            --primary: #3a96ff;
+            --primary-dark: #1b7ae8;
+            --success: #11a57d;
+            --success-soft: #dff7ef;
+            --shadow: 0 14px 26px rgba(28, 33, 40, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #dfe5e2;
+            color: var(--text);
+        }
+
+        a {
+            color: inherit;
+        }
+
+        .browser-shell {
+            width: 100%;
+            min-height: 100vh;
+            background: #dfe5e2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .browser-bar {
+            height: 52px;
+            background: rgba(245, 246, 245, 0.9);
+            border-bottom: 1px solid rgba(126, 135, 147, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px 0 14px;
+            gap: 12px;
+        }
+
+        .browser-left,
+        .browser-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .browser-icon,
+        .browser-nav {
+            width: 18px;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #5d6778;
+            font-size: 0.8rem;
+        }
+
+        .browser-tabs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .browser-tab {
+            min-width: 180px;
+            padding: 8px 14px;
+            border-radius: 12px 12px 0 0;
+            background: rgba(255,255,255,0.36);
+            border: 1px solid rgba(124, 132, 144, 0.2);
+            border-bottom: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            color: #3d4756;
+            font-weight: 600;
+        }
+
+        .browser-tab.active {
+            background: rgba(255,255,255,0.78);
+        }
+
+        .browser-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f2a9bf, #d85d95);
+            display: inline-block;
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.9);
+        }
+
+        .browser-dot.blue {
+            background: linear-gradient(135deg, #8bc4ff, #3e8ef7);
+        }
+
+        .browser-dot.green {
+            background: linear-gradient(135deg, #7be1c2, #25a275);
+        }
+
+        .browser-pill {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.4);
+            border: 1px solid rgba(124, 132, 144, 0.2);
+            font-size: 0.76rem;
+            color: #536076;
+        }
+
+        .app-shell {
+            width: 100%;
+            min-height: calc(100vh - 52px);
+            display: flex;
+            background: #dfe5e2;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(241, 241, 239, 0.92);
+            border-right: 1px solid var(--line);
+            padding: 20px 16px 12px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            padding: 8px 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-mark {
+            width: 20px;
+            height: 20px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #ff7b6a, #d94f6d);
+            position: relative;
+        }
+
+        .brand-mark::before {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            transform: scale(0.65);
+        }
+
+        .nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            color: #2f3b4a;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .nav-item:hover {
+            background: rgba(15, 23, 42, 0.03);
+            transform: translateX(1px);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.08);
+            color: #1f2937;
+            border: 1px solid rgba(59, 130, 246, 0.08);
+        }
+
+        .nav-icon {
+            width: 18px;
+            text-align: center;
+            color: #586877;
+            font-size: 0.9rem;
+        }
+
+        .trial-card {
+            background: rgba(249, 249, 247, 0.92);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .trial-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.95rem;
+            color: #1f2937;
+        }
+
+        .trial-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .trial-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: #111827;
+            color: white;
+            box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
+        }
+
+        .btn-secondary {
+            background: #fff;
+            color: #1f2937;
+            border: 1px solid var(--line);
+        }
+
+        .main {
+            flex: 1;
+            padding: 18px 20px 24px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.55);
+            border: 1px solid rgba(146, 150, 184, 0.3);
+            padding: 14px 18px;
+            border-radius: 14px;
+            box-shadow: 0 4px 12px rgba(17, 24, 39, 0.04);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #4b5563;
+            font-size: 0.92rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #4b5563;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pill {
+            background: #f5f6f7;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            color: #374151;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .pill:hover {
+            background: #eef3f7;
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 18px 0 0;
+        }
+
+        .center-panel {
+            width: min(980px, 100%);
+            background: rgba(17, 24, 39, 0.18);
+            border: 1px solid rgba(141, 153, 169, 0.2);
+            border-radius: 28px;
+            padding: 18px;
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+            backdrop-filter: blur(3px);
+        }
+
+        .analysis-card {
+            width: 100%;
+            min-height: 520px;
+            background: rgba(245,247,246,0.82);
+            border-radius: 22px;
+            padding: 28px 26px;
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: 22px;
+        }
+
+        .left-panel, .right-panel {
+            background: rgba(255, 255, 255, 0.22);
+            border-radius: 18px;
+            padding: 8px 10px;
+        }
+
+        .app-badge {
+            display: inline-block;
+            background: rgba(54, 126, 242, 0.1);
+            color: var(--primary-dark);
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border-radius: 999px;
+            padding: 9px 14px;
+            margin: 8px 0 18px 0;
+        }
+
+        .left-panel h1 {
+            margin: 0 0 16px 0;
+            font-size: clamp(2.2rem, 3vw, 4rem);
+            line-height: 1.07;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            color: #1d2530;
+        }
+
+        .left-panel p {
+            margin: 0;
+            color: #364356;
+            font-size: 1.02rem;
+            line-height: 1.6;
+            max-width: 430px;
+        }
+
+        .confidence-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            background: rgba(122, 201, 224, 0.18);
+            border: 1px solid rgba(63, 141, 191, 0.2);
+            border-radius: 18px;
+            padding: 18px 20px;
+            width: 100%;
+            max-width: 440px;
+            min-height: 88px;
+            margin-top: 30px;
+        }
+
+        .confidence-box strong {
+            font-size: clamp(2.1rem, 2vw, 2.8rem);
+            color: #0f9d8a;
+            font-weight: 800;
+        }
+
+        .confidence-box span {
+            font-size: 0.8rem;
+            color: #42536a;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(110px, 1fr));
+            gap: 12px;
+            width: 100%;
+            max-width: 440px;
+            margin-top: 26px;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.28);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 12px;
+            min-height: 78px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 12px 8px;
+        }
+
+        .stat small {
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #5d6a7a;
+            font-size: 0.62rem;
+            margin-bottom: 8px;
+        }
+
+        .stat strong {
+            font-size: 1rem;
+            color: #1d2530;
+        }
+
+        .stat strong.success {
+            color: #0f9d58;
+        }
+
+        .cta-row {
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .cta-primary {
+            background: linear-gradient(to right, #2e9df3, #1d87e8);
+            color: #fff;
+            border-radius: 999px;
+            padding: 13px 20px;
+            border: none;
+            font-weight: 700;
+            box-shadow: 0 8px 18px rgba(29, 135, 232, 0.28);
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 22px rgba(29, 135, 232, 0.34);
+        }
+
+        .upload-box {
+            margin-top: 28px;
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .upload-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 170px;
+            background: rgba(255,255,255,0.32);
+            border: 2px dashed rgba(96, 125, 159, 0.42);
+            border-radius: 18px;
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: rgba(30, 135, 232, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .upload-zone input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            color: #1d87e8;
+        }
+
+        .upload-text {
+            color: #42536a;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            font-size: 0.82rem;
+            color: #46556a;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 10px;
+            padding: 9px 12px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .img-box {
+            background: linear-gradient(135deg, #ecf0fa, #f9f8f7);
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            min-height: 330px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .img-box img {
+            width: 100%;
+            height: 100%;
+            border-radius: 14px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .placeholder {
+            background: linear-gradient(135deg, rgba(236, 240, 250, 0.8), rgba(249, 248, 247, 0.8));
+        }
+
+        .placeholder-content {
+            text-align: center;
+            color: #495c72;
+            padding: 18px;
+        }
+
+        .placeholder-icon {
+            font-size: 2.7rem;
+            margin-bottom: 12px;
+        }
+
+        .placeholder-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .placeholder-sub {
+            line-height: 1.5;
+            color: #5a697b;
+        }
+
+        .caption {
+            margin-top: 14px;
+            background: rgba(255,255,255,0.25);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-weight: 600;
+            color: #2d3845;
+            text-align: center;
+        }
+
+        .error-box {
+            margin: 20px 0 0;
+            color: #be3d4d;
+            background: rgba(220, 38, 38, 0.08);
+            border: 1px solid rgba(220, 38, 38, 0.18);
+            padding: 10px 12px;
+            border-radius: 10px;
+        }
+
+        @media (max-width: 980px) {
+            .analysis-card {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="browser-shell">
+        <div class="browser-bar">
+            <div class="browser-left">
+                <span class="browser-nav">←</span>
+                <span class="browser-nav">→</span>
+                <span class="browser-icon">🔒</span>
+            </div>
+            <div class="browser-tabs">
+                <div class="browser-tab active"><span class="browser-dot blue"></span> Blood Cell Dashboard</div>
+                <div class="browser-tab"><span class="browser-dot green"></span> Blood Cell Insights</div>
+            </div>
+            <div class="browser-right">
+                <span class="browser-pill">+ New</span>
+                <span class="browser-icon">⋯</span>
+            </div>
+        </div>
+
+        <div class="app-shell">
+            <aside class="sidebar">
+                <div>
+                    <div class="brand">
+                        <span class="brand-mark"></span>
+                        <span>Blood Cell Classifier</span>
+                    </div>
+                    <nav class="nav">
+                        <a class="nav-item active" href="#overview"><span class="nav-icon">◌</span> Cell Overview</a>
+                        <a class="nav-item" href="/"><span class="nav-icon">✦</span> New Sample</a>
+                        <a class="nav-item" href="#history"><span class="nav-icon">◫</span> Recent Scans</a>
+                        <a class="nav-item" href="#library"><span class="nav-icon">▣</span> Cell Atlas</a>
+                        <a class="nav-item" href="#settings"><span class="nav-icon">⚙</span> Model Settings</a>
+                    </nav>
+                </div>
+
+                <div class="trial-card">
+                    <h3>Clinical review workspace</h3>
+                    <p>Case 042 • Blood smear • Ready for classification</p>
+                    <div class="trial-actions">
+                        <a class="btn btn-primary" href="#analysis-form">Review</a>
+                        <button class="btn btn-secondary" type="button" onclick="document.getElementById('analysis-form').scrollIntoView({ behavior: 'smooth' });">Upload</button>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="main">
+                <div class="topbar">
+                    <div class="topbar-left">
+                        <span class="status-dot"></span>
+                        <span>Case 042 • Smear Review</span>
+                    </div>
+                    <div class="top-actions">
+                        <a class="pill" href="/">Workflow</a>
+                        <button class="pill" type="button" onclick="alert('Share case report is ready for integration.')">Share</button>
+                        <button class="pill" type="button" onclick="alert('Export summary is ready for integration.')">Export</button>
+                    </div>
+                </div>
+
+                <div class="workspace">
+                    <div class="center-panel" id="overview">
+                        <div class="analysis-card">
+                            <div class="left-panel">
+                                <div class="app-badge">Blood Cell AI</div>
+                                <h1>Analyze a blood smear</h1>
+                                <p>Detect the predominant cell morphology and review model confidence before final clinical interpretation.</p>
+
+                                <form id="analysis-form" method="POST" enctype="multipart/form-data" action="/">
+                                    <div class="upload-box">
+                                        <label for="fileInput" class="upload-zone">
+                                            <input id="fileInput" type="file" name="file" accept="image/*" required>
+                                            <span class="upload-icon">⬆</span>
+                                            <span class="upload-text">Upload smear image • Select sample from scanner</span>
+                                        </label>
+                                        <div class="file-name" id="file-name">No sample selected</div>
+                                    </div>
+
+                                    <div class="cta-row">
+                                        <button type="submit" class="cta-primary">🔍 Analyze Sample</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="right-panel">
+                                <div class="img-box placeholder">
+                                    <div class="placeholder-content">
+                                        <div class="placeholder-icon">🧬</div>
+                                        <div class="placeholder-title">Microscopic preview</div>
+                                        <div class="placeholder-sub">Your uploaded blood cell image will appear here after analysis.</div>
+                                    </div>
+                                </div>
+                                <div class="caption">Ready for classification</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileInput = document.getElementById('fileInput');
+            const fileName = document.getElementById('file-name');
+
+            if (fileInput && fileName) {
+                fileInput.addEventListener('change', function () {
+                    const selected = this.files && this.files[0] ? this.files[0].name : 'No sample selected';
+                    fileName.textContent = selected;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

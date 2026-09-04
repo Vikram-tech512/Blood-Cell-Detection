@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Analysis History | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+    <div class="mini-header">
+        <div>
+            <h1 style="margin:0; font-size:2rem; letter-spacing:-0.05em;">Analysis History</h1>
+            <p style="margin:8px 0 0; color: var(--muted);">Review previous image classification results.</p>
+        </div>
+        <a class="btn btn-primary" href="/analysis">Start New Analysis</a>
+    </div>
+
+    <div class="toolbar">
+        <div class="field"><input type="search" placeholder="Search analyses" aria-label="Search analyses"></div>
+        <div class="field"><select aria-label="Filter by cell type"><option>Filter by cell type</option><option>Eosinophil</option><option>Lymphocyte</option><option>Monocyte</option><option>Neutrophil</option></select></div>
+        <div class="field"><select aria-label="Filter by confidence"><option>Filter by confidence</option><option>High confidence</option><option>Medium confidence</option></select></div>
+        <div class="field"><select aria-label="Sort by newest"><option>Sort by newest</option><option>Oldest</option></select></div>
+    </div>
+
+    {% if records %}
+    <div class="card">
+        <div class="history-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Cell Type</th>
+                        <th>Confidence</th>
+                        <th>Date</th>
+                        <th>Model</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in records %}
+                    <tr>
+                        <td>
+                            <a href="/result/{{ item.id }}" class="thumb-link">
+                                <img class="history-thumb" src="{{ item.image_path or '/static/blo_files/logo-64x64.png' }}" alt="{{ item.filename }} thumbnail" onerror="this.src='/static/blo_files/logo-64x64.png';">
+                            </a>
+                        </td>
+                        <td>{{ item.cell_type | title }}</td>
+                        <td>{{ item.confidence }}%</td>
+                        <td>{{ item.timestamp }}</td>
+                        <td>{{ item.model }}</td>
+                        <td><span class="status-pill status-success">Completed</span></td>
+                        <td><a href="/result/{{ item.id }}">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card" style="text-align:center; padding:48px 18px;">
+        <h3 style="margin:0 0 8px; font-size:2rem; letter-spacing:-0.05em;">No analyses yet</h3>
+        <p style="margin:0 0 18px; color: var(--muted);">Your completed classifications will appear here.</p>
+        <a class="btn btn-primary" href="/analysis">Start your first analysis</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

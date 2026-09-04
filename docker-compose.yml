@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  blood-cell-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blood_cell_ai_workstation
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - FLASK_ENV=production
+      - TF_ENABLE_ONEDNN_OPTS=0
+    volumes:
+      - ./storage/uploads:/app/storage/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

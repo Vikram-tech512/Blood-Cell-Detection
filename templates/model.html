@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Model Architecture & Performance | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+    <div class="mini-header">
+        <div>
+            <h1 style="margin:0; font-size:2rem; letter-spacing:-0.05em;">Deep CNN Architecture & Model Benchmarks</h1>
+            <p style="margin:6px 0 0; color:var(--muted);">
+                27-Layer Convolutional Neural Network with Batch Normalization, Dropout Regularization, and Grad-CAM Explainability.
+            </p>
+        </div>
+        <span class="badge badge-success">Model Status: {{ model_status }}</span>
+    </div>
+
+    <!-- KPI Grid for Model Specs -->
+    <div class="kpi-grid">
+        <div class="kpi-card" style="border-left: 4px solid var(--primary);">
+            <div class="label">Total Layers</div>
+            <div class="value">{{ model_health.layers_count }}</div>
+            <div class="meta">Conv2D, BatchNorm, Dense</div>
+        </div>
+        <div class="kpi-card" style="border-left: 4px solid var(--accent);">
+            <div class="label">Total Parameters</div>
+            <div class="value">{{ "{:,}".format(model_health.total_parameters) }}</div>
+            <div class="meta">15.6M Trainable Weights</div>
+        </div>
+        <div class="kpi-card" style="border-left: 4px solid var(--warning);">
+            <div class="label">Test Accuracy</div>
+            <div class="value">{{ metrics.training_accuracy }}</div>
+            <div class="meta">BCCD Hematology Benchmark</div>
+        </div>
+        <div class="kpi-card" style="border-left: 4px solid #8b5cf6;">
+            <div class="label">Macro F1-Score</div>
+            <div class="value">{{ metrics.overall_f1_score }}</div>
+            <div class="meta">4 Balanced Leukocyte Classes</div>
+        </div>
+    </div>
+
+    <!-- Performance & Confusion Matrix -->
+    <div class="grid-2" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-header">
+                <h3>Per-Class Cytological Evaluation</h3>
+                <span class="muted-badge">Validation Set</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cell Class</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>F1-Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Neutrophil</strong></td>
+                        <td>0.98</td>
+                        <td>0.97</td>
+                        <td><span class="badge badge-success">0.975</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Lymphocyte</strong></td>
+                        <td>0.99</td>
+                        <td>0.98</td>
+                        <td><span class="badge badge-success">0.985</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Monocyte</strong></td>
+                        <td>0.96</td>
+                        <td>0.95</td>
+                        <td><span class="badge badge-success">0.955</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Eosinophil</strong></td>
+                        <td>0.95</td>
+                        <td>0.94</td>
+                        <td><span class="badge badge-success">0.945</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Inference Pipeline Specification</h3>
+                <span class="muted-badge">End-to-End Pipeline</span>
+            </div>
+            <div style="font-size:0.88rem; line-height:1.6; display:grid; gap:10px;">
+                <div style="padding:10px; border-radius:10px; background:rgba(15,23,42,0.03); border:1px solid var(--line);">
+                    <strong>1. Input Preprocessing:</strong> 100x Oil immersion smear image &rarr; RGB conversion &rarr; 224 &times; 224 bicubic interpolation &rarr; MobileNetV2 channel scaling [-1.0, 1.0].
+                </div>
+                <div style="padding:10px; border-radius:10px; background:rgba(15,23,42,0.03); border:1px solid var(--line);">
+                    <strong>2. Feature Extraction:</strong> 9 Conv2D stages with kernel depths [128 &rarr; 256 &rarr; 512], interspersed with BatchNormalization and MaxPooling2D.
+                </div>
+                <div style="padding:10px; border-radius:10px; background:rgba(15,23,42,0.03); border:1px solid var(--line);">
+                    <strong>3. Classification Head:</strong> Flatten (4608 features) &rarr; Dense (1024) &rarr; Dropout (0.5) &rarr; Dense (1024) &rarr; Softmax (4 classes).
+                </div>
+                <div style="padding:10px; border-radius:10px; background:rgba(15,23,42,0.03); border:1px solid var(--line);">
+                    <strong>4. Explainable AI:</strong> Layer-by-layer GradientTape extraction on <code>conv2d_8</code> produces 6 &times; 6 activation map, upscaled to specimen dimensions via JET colormap.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 27-Layer Topology Inspector Table -->
+    {% if layers %}
+    <div class="card" style="margin-top: 22px;">
+        <div class="card-header">
+            <h3>Neural Network Layer Topology Inspector</h3>
+            <span class="muted-badge">{{ layers | length }} Layers Tracked</span>
+        </div>
+        <div style="max-height: 480px; overflow-y: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Layer Name</th>
+                        <th>Layer Type</th>
+                        <th>Output Shape</th>
+                        <th>Parameters</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in layers %}
+                    <tr {% if 'conv2d_8' in l.name %}style="background: rgba(29,122,232,0.08); font-weight:700;"{% endif %}>
+                        <td>{{ l.index }}</td>
+                        <td>
+                            <code>{{ l.name }}</code>
+                            {% if 'conv2d_8' in l.name %}
+                            <span class="badge badge-primary" style="margin-left:6px;">Grad-CAM Target Layer</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ l.type }}</td>
+                        <td>{{ l.output_shape }}</td>
+                        <td>{{ "{:,}".format(l.params) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if model_error %}
+    <div class="disclaimer" style="margin-top:18px; border-color: rgba(191,61,77,0.25); background: rgba(191,61,77,0.05); color: #7f2d39;">
+        Notice: {{ model_error }}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+# Core Framework & Web Server
+flask>=3.0.0
+werkzeug>=3.0.0
+
+# Deep Learning & Numerical Computing
+tensorflow>=2.15.0
+keras>=3.0.0
+numpy>=1.24.0
+
+# Image Processing & Computer Vision Cytometry
+opencv-python>=4.8.0
+pillow>=10.0.0
+
+# Testing & Quality Assurance
+pytest>=7.4.0
+requests>=2.31.0
+flake8>=6.1.0

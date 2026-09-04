@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Cell Atlas | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell" style="max-width:1200px; margin:0 auto;">
+    <div class="mini-header">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <a class="back-link" href="/" aria-label="Back to overview">← Overview</a>
+            <div>
+                <h1 style="margin:0; font-size:2.3rem; letter-spacing:-0.06em;">Cell Atlas</h1>
+            </div>
+        </div>
+        <a class="btn btn-primary" href="/analysis">Start Analysis</a>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:18px;">
+        <p style="margin:0; color:var(--muted); max-width:560px;">Explore the four blood-cell classes supported by the model.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <input aria-label="Search cells" type="search" placeholder="Search cells" style="min-width:220px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:rgba(255,255,255,0.7);">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="pill-btn active" aria-label="Show all cell classes">All</button>
+                <button type="button" class="pill-btn" aria-label="Filter granulocytes">Granulocytes</button>
+                <button type="button" class="pill-btn" aria-label="Filter agranulocytes">Agranulocytes</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="library-grid">
+        {% for cell in cell_types %}
+        <article class="cell-card" data-cell-id="{{ cell.id }}" data-category="{{ cell.category }}">
+            <div class="cell-art">
+                <img src="{{ cell.image }}" alt="{{ cell.name }} microscopic reference image" loading="lazy" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'fallback-box\'><div class=\'fallback-icon\'>🔬</div><div class=\'fallback-title\'>Reference image unavailable</div><div class=\'fallback-text\'>Add a reference image to the Cell Atlas.</div></div>';">
+            </div>
+            <div class="cell-body">
+                <div class="cell-label">Model-supported class</div>
+                <div class="cell-name">{{ cell.name }}</div>
+                <p>{{ cell.description }}</p>
+                <div class="subtle" style="margin-bottom:16px;">{{ cell.traits }}</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-secondary" data-open-view="{{ cell.id }}">View details</button>
+                    <button type="button" class="btn btn-primary" data-open-image="{{ cell.id }}">Zoom</button>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    <div class="disclaimer">
+        Reference material is provided for research and educational use. It is not medical advice or a diagnosis.
+    </div>
+</div>
+
+<div id="atlas-modal" class="atlas-modal hidden" role="dialog" aria-modal="true" aria-labelledby="atlas-modal-title">
+    <div class="atlas-modal-backdrop" data-close-modal="true"></div>
+    <div class="atlas-modal-panel">
+        <div class="atlas-modal-header">
+            <div>
+                <div class="cell-label">Model-supported class</div>
+                <h2 id="atlas-modal-title">Cell</h2>
+            </div>
+            <button type="button" class="atlas-close" aria-label="Close dialog">✕</button>
+        </div>
+        <img id="atlas-modal-image" src="" alt="" style="width:100%; max-height:62vh; object-fit:contain; border-radius:12px; background:#eef4f8;">
+        <div class="atlas-detail">
+            <p id="atlas-modal-description"></p>
+            <ul id="atlas-modal-traits"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const atlasCells = {{ cell_types | tojson }};
+    const modal = document.getElementById('atlas-modal');
+    const modalTitle = document.getElementById('atlas-modal-title');
+    const modalImage = document.getElementById('atlas-modal-image');
+    const modalDescription = document.getElementById('atlas-modal-description');
+    const modalTraits = document.getElementById('atlas-modal-traits');
+    const closeModal = () => {
+        if (!modal) return;
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    };
+    const openModal = (cellId) => {
+        const cell = atlasCells.find(item => item.id === cellId);
+        if (!cell) return;
+        modalTitle.textContent = cell.name;
+        modalImage.src = cell.image;
+        modalImage.alt = `${cell.name} microscopic reference image`;
+        modalDescription.textContent = cell.description;
+        modalTraits.innerHTML = cell.traits.split('·').map(item => '<li>' + item.trim() + '</li>').join('');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    };
+
+    document.querySelectorAll('[data-open-image]').forEach(button => {
+        button.addEventListener('click', () => openModal(button.dataset.openImage));
+    });
+    document.querySelectorAll('[data-open-view]').forEach(button => {
+        button.addEventListener('click', () => openModal(button.dataset.openView));
+    });
+    document.querySelectorAll('[data-close-modal]').forEach(node => node.addEventListener('click', closeModal));
+    const closeButton = document.querySelector('.atlas-close');
+    if (closeButton) closeButton.addEventListener('click', closeModal);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeModal();
+    });
+
+    document.querySelectorAll('.pill-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.pill-btn').forEach(item => item.classList.remove('active'));
+            button.classList.add('active');
+        });
+    });
+</script>
+{% endblock %}

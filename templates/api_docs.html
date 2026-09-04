@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}API Documentation & Developer Playground | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+    <div class="mini-header">
+        <div>
+            <h1 style="margin:0; font-size:2rem; letter-spacing:-0.05em;">REST API Documentation & Playground</h1>
+            <p style="margin:6px 0 0; color:var(--muted);">
+                Integrate automated blood-cell classification, Grad-CAM attention heatmaps, and cytology bio-markers into your LIMS or clinical pipeline.
+            </p>
+        </div>
+        <span class="badge badge-success">API Status: Operational</span>
+    </div>
+
+    <!-- System Spec Card -->
+    <div class="card" style="margin-bottom:20px; background:linear-gradient(135deg, rgba(29,122,232,0.06), rgba(255,255,255,0.7));">
+        <div class="card-header">
+            <h3>Server Specifications & Engine Health</h3>
+            <span class="muted-badge">v2.0.0</span>
+        </div>
+        <div class="morphology-grid" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="morph-stat">
+                <div class="label">Architecture</div>
+                <div class="value" style="font-size:1.1rem;">{{ health.model_name }}</div>
+                <div class="hint">{{ health.model_format }}</div>
+            </div>
+            <div class="morph-stat">
+                <div class="label">Input Tensor</div>
+                <div class="value" style="font-size:1.1rem;">224 × 224 × 3</div>
+                <div class="hint">RGB Normalized</div>
+            </div>
+            <div class="morph-stat">
+                <div class="label">Target Classes</div>
+                <div class="value" style="font-size:1.1rem;">4 Leukocytes</div>
+                <div class="hint">Eos, Lym, Mono, Neut</div>
+            </div>
+            <div class="morph-stat">
+                <div class="label">Parameters</div>
+                <div class="value" style="font-size:1.1rem;">{{ "{:,}".format(health.total_parameters) }}</div>
+                <div class="hint">27 Deep Layers</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Endpoint 1: Healthcheck -->
+    <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+            <div>
+                <span class="badge badge-primary" style="margin-right:8px;">GET</span>
+                <code style="font-size:1rem; font-weight:700;">/api/health</code>
+            </div>
+            <span class="muted-badge">Health & Model Specs</span>
+        </div>
+        <p style="color:var(--muted); font-size:0.88rem; margin:8px 0 12px;">
+            Returns current runtime status, model topology, parameter count, and loaded capabilities.
+        </p>
+        <div style="background:rgba(15,23,42,0.05); border-radius:10px; padding:12px; font-family:monospace; font-size:0.85rem;">
+            curl -X GET http://localhost:5000/api/health
+        </div>
+    </div>
+
+    <!-- Endpoint 2: Single Cell Predict -->
+    <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+            <div>
+                <span class="badge badge-success" style="margin-right:8px;">POST</span>
+                <code style="font-size:1rem; font-weight:700;">/api/predict</code>
+            </div>
+            <span class="muted-badge">Inference + Grad-CAM + Morphology</span>
+        </div>
+        <p style="color:var(--muted); font-size:0.88rem; margin:8px 0 12px;">
+            Accepts multipart form-data image upload. Computes deep neural classification, class probabilities, Grad-CAM attention heatmap URLs, and quantitative cytological biomarkers.
+        </p>
+
+        <h4 style="margin:12px 0 6px; font-size:0.85rem;">Request Example (cURL):</h4>
+        <div style="background:rgba(15,23,42,0.05); border-radius:10px; padding:12px; font-family:monospace; font-size:0.85rem; overflow-x:auto;">
+            curl -X POST http://localhost:5000/api/predict \<br>
+            &nbsp;&nbsp;-F "file=@specimen_cell.jpg"
+        </div>
+
+        <h4 style="margin:16px 0 6px; font-size:0.85rem;">Sample Response (JSON):</h4>
+        <pre style="background:rgba(15,23,42,0.05); border-radius:10px; padding:14px; font-family:monospace; font-size:0.8rem; overflow-x:auto; margin:0;">{
+  "success": true,
+  "data": {
+    "id": "e4a78129-913b-48c2-a8fb-098846152b91",
+    "filename": "specimen_cell.jpg",
+    "prediction": "neutrophil",
+    "confidence": 0.886012,
+    "confidence_pct": 88.6,
+    "probabilities": {
+      "eosinophil": 0.1139,
+      "lymphocyte": 0.0,
+      "monocyte": 0.0001,
+      "neutrophil": 0.8860
+    },
+    "gradcam_overlay_url": "/uploads/overlay.jpg",
+    "gradcam_heatmap_url": "/uploads/heatmap.jpg",
+    "morphology": {
+      "nc_ratio": 0.52,
+      "lobe_count": 3,
+      "granularity_index": 48.2,
+      "cell_diameter_um": 13.8,
+      "nuclear_fraction_pct": 34.2
+    }
+  }
+}</pre>
+    </div>
+
+    <!-- Endpoint 3: Morphology Only -->
+    <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+            <div>
+                <span class="badge badge-success" style="margin-right:8px;">POST</span>
+                <code style="font-size:1rem; font-weight:700;">/api/morphology</code>
+            </div>
+            <span class="muted-badge">Computer Vision Cytometry</span>
+        </div>
+        <p style="color:var(--muted); font-size:0.88rem; margin:8px 0 12px;">
+            Extracts quantitative biological markers without running neural network inference. Useful for rapid cellular geometry and staining profiling.
+        </p>
+        <div style="background:rgba(15,23,42,0.05); border-radius:10px; padding:12px; font-family:monospace; font-size:0.85rem;">
+            curl -X POST http://localhost:5000/api/morphology -F "file=@cell.jpg"
+        </div>
+    </div>
+
+    <!-- Endpoint 4: Sample Presets -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <span class="badge badge-primary" style="margin-right:8px;">GET</span>
+                <code style="font-size:1rem; font-weight:700;">/api/samples</code>
+            </div>
+            <span class="muted-badge">Benchmark Test Specimens</span>
+        </div>
+        <p style="color:var(--muted); font-size:0.88rem; margin:8px 0 12px;">
+            Retrieves list of curated benchmark reference cell images with paths and clinical classifications for automated integration testing.
+        </p>
+        <div style="background:rgba(15,23,42,0.05); border-radius:10px; padding:12px; font-family:monospace; font-size:0.85rem;">
+            curl -X GET http://localhost:5000/api/samples
+        </div>
+    </div>
+</div>
+{% endblock %}

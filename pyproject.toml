@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blood-cell-ai"
+version = "2.0.0"
+description = "State-of-the-Art Deep Learning & Computer Vision Platform for White Blood Cell Classification, Grad-CAM Explainability, and Cytometry"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Blood Cell AI Team", email = "research@bloodcellai.org" }
+]
+keywords = [
+    "deep-learning",
+    "hematology",
+    "blood-cells",
+    "grad-cam",
+    "explainable-ai",
+    "cytometry",
+    "keras",
+    "tensorflow",
+    "medical-ai"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "flask>=3.0.0",
+    "werkzeug>=3.0.0",
+    "tensorflow>=2.15.0",
+    "keras>=3.0.0",
+    "numpy>=1.24.0",
+    "opencv-python>=4.8.0",
+    "pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "requests>=2.31.0",
+    "flake8>=6.1.0",
+    "black>=23.9.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]

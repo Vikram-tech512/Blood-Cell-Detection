@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+
+{% block title %}Analysis Result · {{ class_label }} | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+    <div class="mini-header">
+        <a class="back-link" href="/analysis">← New Analysis</a>
+        <div class="stepper" aria-label="Analysis steps">
+            <span><span class="dot">01</span> Upload</span>
+            <span>→</span>
+            <span><span class="dot">02</span> Inference & Cytometry</span>
+            <span>→</span>
+            <span class="active"><span class="dot">03</span> Diagnostic Report</span>
+        </div>
+        <div class="hero-actions no-print">
+            <a class="btn btn-secondary" href="/report/{{ record_id }}" target="_blank">📄 View Clinical Report</a>
+            <a class="btn btn-primary" href="/analysis">+ Analyze Next</a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="disclaimer" style="margin-bottom:18px; border-color: rgba(191,61,77,0.25); background: rgba(191,61,77,0.06); color: var(--danger);">
+        <strong>Notice:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="result-layout">
+        <!-- LEFT COLUMN: Dual Microscopic & Grad-CAM Visualizer + Cytometry Metrics -->
+        <div class="visualizer-column">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Microscopic Cytology & Explainability (Grad-CAM)</h3>
+                    <span class="muted-badge">{{ filename }}</span>
+                </div>
+
+                <div class="xai-stage-wrapper">
+                    <div class="xai-stage" id="xai-stage">
+                        <img class="xai-base" id="xai-base-img" src="{{ image_url }}" alt="Microscopic Blood Cell Specimen">
+                        {% if gradcam_heatmap_url %}
+                        <img class="xai-overlay" id="xai-overlay-img" src="{{ gradcam_heatmap_url }}" alt="Grad-CAM Neural Attention Heatmap">
+                        {% endif %}
+                    </div>
+
+                    {% if gradcam_heatmap_url %}
+                    <div class="xai-controls">
+                        <div class="slider-row">
+                            <span style="font-size:0.8rem; font-weight:700; color:var(--muted);">Microscopy</span>
+                            <input type="range" id="xai-slider" min="0" max="100" value="55" aria-label="Grad-CAM Opacity Slider">
+                            <span style="font-size:0.8rem; font-weight:700; color:var(--primary);">XAI Heatmap (<span id="slider-val">55%</span>)</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--muted-2);">
+                            <span>Raw Cellular View</span>
+                            <span>Warm colors (red/yellow) denote features governing model prediction</span>
+                            <span>Attention Map</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="inline-actions" style="margin-top:14px; justify-content:flex-start;">
+                    <button class="btn btn-secondary" type="button" onclick="setOpacity(0)">Cell Only</button>
+                    <button class="btn btn-secondary" type="button" onclick="setOpacity(55)">Balanced Blend (55%)</button>
+                    <button class="btn btn-secondary" type="button" onclick="setOpacity(100)">Heatmap Only</button>
+                    <a class="btn btn-secondary" href="{{ image_url }}" download title="Download Specimen">⬇ Image</a>
+                </div>
+            </div>
+
+            <!-- Quantitative Morphology Biomarkers -->
+            {% if morphology and morphology.nc_ratio %}
+            <div class="card" style="margin-top:18px;">
+                <div class="card-header">
+                    <div>
+                        <h3 style="margin:0;">Cellular Cytometry & Morphology Profiling</h3>
+                        <p style="margin:4px 0 0; font-size:0.78rem; color:var(--muted);">Quantitative bio-markers derived via computer vision cytometry algorithms.</p>
+                    </div>
+                    <span class="badge badge-primary">OpenCV Engine</span>
+                </div>
+
+                <div class="morphology-grid">
+                    <div class="morph-stat">
+                        <div class="label">N:C Ratio</div>
+                        <div class="value">{{ morphology.nc_ratio }}</div>
+                        <div class="hint">{{ morphology.qualitative.nc_category }}</div>
+                    </div>
+
+                    <div class="morph-stat">
+                        <div class="label">Nuclear Lobes</div>
+                        <div class="value">{{ morphology.lobe_count }}</div>
+                        <div class="hint">{{ morphology.qualitative.lobulation_type }}</div>
+                    </div>
+
+                    <div class="morph-stat">
+                        <div class="label">Granularity Index</div>
+                        <div class="value">{{ morphology.granularity_index }} <span style="font-size:0.8rem; font-weight:normal;">/ 100</span></div>
+                        <div class="hint">{{ morphology.qualitative.granularity_grade }}</div>
+                    </div>
+
+                    <div class="morph-stat">
+                        <div class="label">Estimated Diameter</div>
+                        <div class="value">{{ morphology.cell_diameter_um }} <span style="font-size:0.8rem; font-weight:normal;">μm</span></div>
+                        <div class="hint">Nucleus: {{ morphology.nucleus_diameter_um }} μm</div>
+                    </div>
+                </div>
+
+                <div class="panel-footer" style="margin-top:14px; font-size:0.8rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <span>Nuclear Volume Fraction: <strong>{{ morphology.nuclear_fraction_pct }}%</strong></span>
+                    <span>Cytoplasm Fraction: <strong>{{ morphology.cytoplasm_fraction_pct }}%</strong></span>
+                    <span>Circularity Index: <strong>{{ morphology.nuclear_circularity }}</strong></span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- RIGHT COLUMN: Diagnostic Summary, Probability Distribution, Clinical Guide -->
+        <div class="metric-stack">
+            <!-- Classification Badge Card -->
+            <div class="card" style="border-top: 4px solid var(--primary);">
+                <div class="card-header">
+                    <span class="muted-badge">Primary AI Classification</span>
+                    <span class="badge badge-{{ clinical.color_tag }}">{{ clinical.lineage }}</span>
+                </div>
+
+                <h2 style="font-size: clamp(2rem, 3.5vw, 3rem); margin: 6px 0 2px; letter-spacing: -0.05em; line-height: 1.1;">
+                    {{ class_label }}
+                </h2>
+                <div style="color: var(--muted); font-size: 0.88rem; margin-bottom: 16px;">
+                    {{ clinical.title }}
+                </div>
+
+                <div class="metric-card" style="background: rgba(29,122,232,0.06); border-color: rgba(29,122,232,0.18);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div>
+                            <div class="label" style="font-size:0.75rem; color:var(--muted); font-weight:700; text-transform:uppercase;">Diagnostic Confidence</div>
+                            <div class="big-score" style="color:var(--text);">{{ confidence }}%</div>
+                        </div>
+                        <div style="text-align:right; margin-bottom:10px;">
+                            <span class="status-pill status-success" style="font-size:0.82rem;">Calibrated Softmax</span>
+                        </div>
+                    </div>
+                    <div class="bar-track" style="height:10px; margin-top:8px;">
+                        <div class="bar-fill" style="width: {{ confidence }}%;"></div>
+                    </div>
+                </div>
+
+                <!-- Probability Spectrum across all 4 WBC Types -->
+                <div style="margin-top:20px;">
+                    <h4 style="margin:0 0 12px; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);">
+                        Probability Spectrum
+                    </h4>
+                    <div class="distribution-list">
+                        {% for label_key, prob_score in probabilities.items() %}
+                        {% set prob_percent = (prob_score * 100) | round(1) if prob_score <= 1.0 else prob_score | round(1) %}
+                        <div class="probability-item">
+                            <div class="name" style="font-weight:{% if label_key == cell_type %}800{% else %}500{% endif %};">
+                                {{ label_key | title }}
+                                {% if label_key == cell_type %}
+                                <span style="color:var(--primary); font-size:0.7rem;">● Match</span>
+                                {% endif %}
+                            </div>
+                            <div class="bar">
+                                <div class="fill" style="width: {{ prob_percent }}%; {% if label_key == cell_type %}background: linear-gradient(135deg, #3ea1ff, var(--primary));{% else %}background: rgba(148,163,184,0.4);{% endif %}"></div>
+                            </div>
+                            <div class="value">{{ prob_percent }}%</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clinical Pathology Guidance Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 style="margin:0;">Clinical Cytology Reference</h3>
+                    <span class="muted-badge">Diagnostic Atlas</span>
+                </div>
+
+                <div style="display:grid; gap:12px; font-size:0.88rem; line-height:1.5;">
+                    <div>
+                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Distinctive Microscopic Features:</strong>
+                        <span style="color:var(--muted);">{{ clinical.key_features }}</span>
+                    </div>
+
+                    <div>
+                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Clinical & Diagnostic Relevance:</strong>
+                        <span style="color:var(--muted);">{{ clinical.clinical_significance }}</span>
+                    </div>
+
+                    <div>
+                        <strong style="color:var(--text); display:block; margin-bottom:2px;">Reference Normal Differential Range:</strong>
+                        <span class="status-pill status-neutral" style="font-size:0.8rem;">{{ clinical.normal_differential }}</span>
+                    </div>
+                </div>
+
+                <div class="panel-footer" style="margin-top:16px;">
+                    <a class="btn btn-primary" href="/report/{{ record_id }}" style="width:100%;">
+                        Generate Diagnostic Pathology Report (PDF / Print)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Specimen & Model Metadata -->
+            <div class="card" style="font-size:0.82rem; color:var(--muted);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span>Specimen Record ID:</span>
+                    <strong style="color:var(--text);">{{ record_id[:12] }}...</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span>Analysis Timestamp:</span>
+                    <span style="color:var(--text);">{{ timestamp }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>Model Engine:</span>
+                    <span style="color:var(--text);">{{ model }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Real-time Grad-CAM Opacity Slider
+    const slider = document.getElementById('xai-slider');
+    const overlayImg = document.getElementById('xai-overlay-img');
+    const sliderVal = document.getElementById('slider-val');
+
+    function updateOpacity(val) {
+        if (overlayImg) {
+            overlayImg.style.opacity = (val / 100).toFixed(2);
+        }
+        if (sliderVal) {
+            sliderVal.textContent = val + '%';
+        }
+    }
+
+    if (slider) {
+        slider.addEventListener('input', function() {
+            updateOpacity(this.value);
+        });
+    }
+
+    function setOpacity(val) {
+        if (slider) slider.value = val;
+        updateOpacity(val);
+    }
+</script>
+{% endblock %}

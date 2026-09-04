@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings | Blood Cell AI{% endblock %}
+
+{% block content %}
+<div class="page-shell settings-page-shell">
+    <div class="mini-header">
+        <div>
+            <h1 style="margin:0; font-size:2rem; letter-spacing:-0.05em;">Settings</h1>
+            <p style="margin:8px 0 0; color: var(--muted);">Configure your Blood Cell AI workspace.</p>
+        </div>
+        <div class="header-status-wrap">
+            <span class="muted-badge" id="settings-save-indicator" aria-live="polite">
+                <span class="save-indicator-dot" aria-hidden="true">✓</span>
+                <span class="save-indicator-text">Saved</span>
+            </span>
+        </div>
+    </div>
+
+    <div class="settings-layout" style="display:grid; grid-template-columns: 220px minmax(0,1fr); gap:18px;">
+        <aside class="settings-nav card" aria-label="Settings navigation" style="padding:16px;">
+            <div class="settings-nav-group" style="display:grid; gap:10px;">
+                <button class="settings-tab active" type="button" data-panel="appearance" aria-selected="true">Appearance</button>
+                <button class="settings-tab" type="button" data-panel="interface" aria-selected="false">Interface</button>
+                <button class="settings-tab" type="button" data-panel="model" aria-selected="false">Model</button>
+                <button class="settings-tab" type="button" data-panel="data" aria-selected="false">Data</button>
+                <button class="settings-tab" type="button" data-panel="about" aria-selected="false">About</button>
+            </div>
+        </aside>
+
+        <main class="settings-content" style="display:grid; gap:18px;">
+            <section class="card settings-panel active" id="panel-appearance" aria-label="Appearance settings" style="display:block;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px;">
+                    <div>
+                        <h3 style="margin:0 0 6px; font-size:1.1rem;">Appearance</h3>
+                        <p style="margin:0; color:var(--muted);">Customize the visual appearance of your workspace.</p>
+                    </div>
+                </div>
+
+                <div class="setting-row" style="display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap;">
+                    <div>
+                        <div class="setting-label" style="font-weight:700; margin-bottom:6px;">Theme</div>
+                    </div>
+                    <div class="segmented-control" role="radiogroup" aria-label="Theme selection" style="display:flex; gap:8px; flex-wrap:wrap; background: rgba(15,23,42,0.03); border:1px solid var(--line); border-radius:14px; padding:6px;">
+                        <button type="button" class="segment-option" data-setting="theme" data-value="light" role="radio" aria-checked="false" style="display:inline-flex; align-items:center; gap:8px; border:1px solid transparent; background:transparent; border-radius:10px; padding:10px 16px; color:var(--text); font-weight:700; cursor:pointer;">
+                            <span aria-hidden="true">☀</span> Light
+                        </button>
+                        <button type="button" class="segment-option" data-setting="theme" data-value="dark" role="radio" aria-checked="false" style="display:inline-flex; align-items:center; gap:8px; border:1px solid transparent; background:transparent; border-radius:10px; padding:10px 16px; color:var(--text); font-weight:700; cursor:pointer;">
+                            <span aria-hidden="true">☾</span> Dark
+                        </button>
+                        <button type="button" class="segment-option" data-setting="theme" data-value="system" role="radio" aria-checked="false" style="display:inline-flex; align-items:center; gap:8px; border:1px solid transparent; background:transparent; border-radius:10px; padding:10px 16px; color:var(--text); font-weight:700; cursor:pointer;">
+                            <span aria-hidden="true">◐</span> System
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card settings-panel" id="panel-interface" aria-label="Interface settings" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px;">
+                    <div>
+                        <h3 style="margin:0 0 6px; font-size:1.1rem;">Interface</h3>
+                        <p style="margin:0; color:var(--muted);">Control spacing, motion, and navigation behavior.</p>
+                    </div>
+                </div>
+
+                <div class="setting-row toggle-row" style="display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 0; border-top:1px solid var(--line);">
+                    <div style="flex:1; min-width:0;">
+                        <label class="setting-label" style="font-weight:700; display:block; margin-bottom:4px;">Compact mode</label>
+                        <p class="setting-description" style="margin:0; color:var(--muted);">Use denser spacing throughout the workspace.</p>
+                    </div>
+                    <button type="button" class="switch-control" data-setting="compactMode" role="switch" aria-checked="false" aria-label="Compact mode" style="position:relative; width:52px; height:30px; border-radius:999px; border:1px solid var(--line); background:rgba(15,23,42,0.12); cursor:pointer; transition:all 0.2s ease;">
+                        <span class="switch-knob" style="position:absolute; top:4px; left:4px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(15,23,42,0.2); transition:all 0.2s ease;"></span>
+                    </button>
+                </div>
+
+                <div class="setting-row toggle-row" style="display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 0; border-top:1px solid var(--line);">
+                    <div style="flex:1; min-width:0;">
+                        <label class="setting-label" style="font-weight:700; display:block; margin-bottom:4px;">Animations</label>
+                        <p class="setting-description" style="margin:0; color:var(--muted);">Enable subtle interface transitions.</p>
+                    </div>
+                    <button type="button" class="switch-control" data-setting="animations" role="switch" aria-checked="true" aria-label="Animations" style="position:relative; width:52px; height:30px; border-radius:999px; border:1px solid rgba(29,122,232,0.3); background:rgba(29,122,232,0.18); cursor:pointer; transition:all 0.2s ease;">
+                        <span class="switch-knob" style="position:absolute; top:4px; left:28px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(15,23,42,0.2); transition:all 0.2s ease;"></span>
+                    </button>
+                </div>
+
+                <div class="setting-row toggle-row" style="display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 0; border-top:1px solid var(--line);">
+                    <div style="flex:1; min-width:0;">
+                        <label class="setting-label" style="font-weight:700; display:block; margin-bottom:4px;">Reduce motion</label>
+                        <p class="setting-description" style="margin:0; color:var(--muted);">Minimize motion and animated effects.</p>
+                        <small style="display:block; margin-top:6px; color: var(--muted);">Reduce motion takes priority over animation preferences.</small>
+                    </div>
+                    <button type="button" class="switch-control" data-setting="reduceMotion" role="switch" aria-checked="false" aria-label="Reduce motion" style="position:relative; width:52px; height:30px; border-radius:999px; border:1px solid var(--line); background:rgba(15,23,42,0.12); cursor:pointer; transition:all 0.2s ease;">
+                        <span class="switch-knob" style="position:absolute; top:4px; left:4px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(15,23,42,0.2); transition:all 0.2s ease;"></span>
+                    </button>
+                </div>
+
+                <div class="setting-row" style="display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; padding-top:18px; border-top:1px solid var(--line);">
+                    <div>
+                        <div class="setting-label" style="font-weight:700; margin-bottom:6px;">Sidebar behavior</div>
+                    </div>
+                    <div class="segmented-control" role="radiogroup" aria-label="Sidebar behavior" style="display:flex; gap:8px; flex-wrap:wrap; background: rgba(15,23,42,0.03); border:1px solid var(--line); border-radius:14px; padding:6px;">
+                        <button type="button" class="segment-option" data-setting="sidebarBehavior" data-value="expanded" role="radio" aria-checked="false" style="display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; background:transparent; border-radius:10px; padding:10px 16px; color:var(--text); font-weight:700; cursor:pointer;">Expanded</button>
+                        <button type="button" class="segment-option" data-setting="sidebarBehavior" data-value="collapsed" role="radio" aria-checked="false" style="display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; background:transparent; border-radius:10px; padding:10px 16px; color:var(--text); font-weight:700; cursor:pointer;">Collapsed</button>
+                        <button type="button" class="segment-option" data-setting="sidebarBehavior" data-value="adaptive" role="radio" aria-checked="false" style="display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; background:transparent; border-radius:10px; padding:10px 16px; color:var(--text); font-weight:700; cursor:pointer;">Adaptive</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card settings-panel" id="panel-model" aria-label="Model settings" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px;">
+                    <div>
+                        <h3 style="margin:0 0 6px; font-size:1.1rem;">Model</h3>
+                        <p style="margin:0; color:var(--muted);">Runtime information for the active blood-cell classification model.</p>
+                    </div>
+                </div>
+
+                <div class="info-grid" style="display:grid; grid-template-columns: repeat(2, minmax(180px,1fr)); gap:14px;">
+                    <div class="info-card" style="background: rgba(15,23,42,0.02); border:1px solid var(--line); border-radius:14px; padding:14px;">
+                        <span class="info-label" style="display:block; color:var(--muted); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Model status</span>
+                        <strong id="model-status-value" style="font-size:1.05rem;">Checking…</strong>
+                    </div>
+                    <div class="info-card" style="background: rgba(15,23,42,0.02); border:1px solid var(--line); border-radius:14px; padding:14px;">
+                        <span class="info-label" style="display:block; color:var(--muted); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Model</span>
+                        <strong id="model-name-value" style="font-size:1.05rem;">Blood Cell</strong>
+                    </div>
+                    <div class="info-card" style="background: rgba(15,23,42,0.02); border:1px solid var(--line); border-radius:14px; padding:14px;">
+                        <span class="info-label" style="display:block; color:var(--muted); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Framework</span>
+                        <strong id="model-format-value" style="font-size:1.05rem;">TensorFlow / Keras</strong>
+                    </div>
+                    <div class="info-card" style="background: rgba(15,23,42,0.02); border:1px solid var(--line); border-radius:14px; padding:14px;">
+                        <span class="info-label" style="display:block; color:var(--muted); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Input</span>
+                        <strong id="model-input-value" style="font-size:1.05rem;">224 × 224 × 3</strong>
+                    </div>
+                </div>
+
+                <div style="margin-top:18px;">
+                    <div class="info-label" style="display:block; color:var(--muted); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">Supported classes</div>
+                    <div id="model-class-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                </div>
+            </section>
+
+            <section class="card settings-panel" id="panel-data" aria-label="Data settings" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px;">
+                    <div>
+                        <h3 style="margin:0 0 6px; font-size:1.1rem;">Analysis history</h3>
+                        <p style="margin:0; color:var(--muted);">Manage locally stored analysis records.</p>
+                    </div>
+                </div>
+
+                <div class="danger-panel" style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background: rgba(191,61,77,0.04); border:1px solid rgba(191,61,77,0.2); border-radius:16px; padding:16px;">
+                    <div>
+                        <h4 style="margin:0 0 4px; font-size:1rem;">Clear analysis history</h4>
+                        <p style="margin:0; color:var(--muted);">This action cannot be undone.</p>
+                    </div>
+                    <button class="btn btn-secondary" type="button" id="clear-history-btn" style="border-color: rgba(191,61,77,0.2); color: var(--danger);">Clear history</button>
+                </div>
+            </section>
+
+            <section class="card settings-panel" id="panel-about" aria-label="About settings" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px;">
+                    <div>
+                        <h3 style="margin:0 0 6px; font-size:1.1rem;">About</h3>
+                        <p style="margin:0; color:var(--muted);">Application and research context.</p>
+                    </div>
+                </div>
+
+                <div style="display:grid; gap:12px;">
+                    <div style="display:flex; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); padding-bottom:10px;">
+                        <span style="color:var(--muted);">Application</span><strong>Blood Cell AI</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); padding-bottom:10px;">
+                        <span style="color:var(--muted);">Technology</span><strong>TensorFlow · Keras · OpenCV · Flask</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); padding-bottom:10px;">
+                        <span style="color:var(--muted);">Purpose</span><strong>Blood-cell image classification for research and educational assistance.</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); padding-bottom:10px;">
+                        <span style="color:var(--muted);">Disclaimer</span><strong>Predictions are for research and educational assistance only and are not a medical diagnosis.</strong>
+                    </div>
+                </div>
+
+                <div style="margin-top:18px; display:flex; justify-content:flex-end;">
+                    <button class="btn btn-secondary" type="button" id="reset-settings-btn">Reset settings</button>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<div class="toast-container" aria-live="polite" aria-atomic="true" id="toast-container" style="position:fixed; right:20px; bottom:20px; display:grid; gap:10px; z-index:80;"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const settingsStore = window.BloodCellSettings;
+        const saveIndicator = document.getElementById('settings-save-indicator');
+        const saveIndicatorText = saveIndicator.querySelector('.save-indicator-text');
+        const tabs = Array.from(document.querySelectorAll('.settings-tab'));
+        const panels = Array.from(document.querySelectorAll('.settings-panel'));
+        const segmentButtons = Array.from(document.querySelectorAll('.segment-option'));
+        const switchButtons = Array.from(document.querySelectorAll('.switch-control'));
+
+        function setSaveFeedback(message, isSaving) {
+            if (!saveIndicatorText) return;
+            saveIndicatorText.textContent = message;
+            saveIndicator.setAttribute('data-state', isSaving ? 'saving' : 'saved');
+            saveIndicator.style.opacity = '1';
+            clearTimeout(setSaveFeedback.timer);
+            setSaveFeedback.timer = setTimeout(() => {
+                saveIndicatorText.textContent = 'Saved';
+                saveIndicator.setAttribute('data-state', 'saved');
+            }, isSaving ? 400 : 1200);
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.padding = '10px 12px';
+            toast.style.borderRadius = '12px';
+            toast.style.background = 'rgba(12,18,28,0.92)';
+            toast.style.color = '#edf5ff';
+            toast.style.boxShadow = '0 8px 18px rgba(0,0,0,0.18)';
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 1800);
+        }
+
+        function updateSwitchButton(button, checked) {
+            button.setAttribute('aria-checked', String(checked));
+            button.style.background = checked ? 'rgba(29,122,232,0.18)' : 'rgba(15,23,42,0.12)';
+            button.style.borderColor = checked ? 'rgba(29,122,232,0.35)' : 'var(--line)';
+            const knob = button.querySelector('.switch-knob');
+            if (knob) {
+                knob.style.left = checked ? '28px' : '4px';
+            }
+        }
+
+        function updateSegmentButtons(setting, value) {
+            segmentButtons.forEach((button) => {
+                const matches = button.dataset.setting === setting && button.dataset.value === value;
+                button.setAttribute('aria-checked', String(matches));
+                button.style.background = matches ? 'rgba(29,122,232,0.08)' : 'transparent';
+                button.style.borderColor = matches ? 'rgba(29,122,232,0.2)' : 'transparent';
+                button.style.color = matches ? 'var(--primary)' : 'var(--text)';
+            });
+        }
+
+        function syncSettingsUi(settings) {
+            const next = settingsStore.getSettings();
+            updateSegmentButtons('theme', next.theme);
+            updateSegmentButtons('sidebarBehavior', next.sidebarBehavior);
+            switchButtons.forEach((button) => {
+                const key = button.dataset.setting;
+                const checked = Boolean(next[key]);
+                updateSwitchButton(button, checked);
+            });
+        }
+
+        function loadHealth() {
+            fetch('/api/health')
+                .then((response) => response.json())
+                .then((data) => {
+                    const statusValue = document.getElementById('model-status-value');
+                    const nameValue = document.getElementById('model-name-value');
+                    const formatValue = document.getElementById('model-format-value');
+                    const inputValue = document.getElementById('model-input-value');
+                    const classList = document.getElementById('model-class-list');
+                    const classes = Array.isArray(data && data.classes) ? data.classes : ['Eosinophil', 'Lymphocyte', 'Monocyte', 'Neutrophil'];
+
+                    const isLoaded = Boolean(data && data.model_loaded);
+                    statusValue.textContent = isLoaded ? 'Loaded' : 'Unavailable';
+                    statusValue.style.color = isLoaded ? 'var(--accent)' : 'var(--danger)';
+                    nameValue.textContent = data && data.model_name ? data.model_name : 'Blood Cell';
+                    formatValue.textContent = data && data.model_format ? data.model_format : 'TensorFlow / Keras';
+                    inputValue.textContent = Array.isArray(data && data.input_shape) ? `${data.input_shape[0]} × ${data.input_shape[1]} × ${data.input_shape[2]}` : '224 × 224 × 3';
+                    classList.innerHTML = classes.map((item) => `<span style="display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px; border:1px solid var(--line); background: rgba(15,23,42,0.02); font-weight:600;">${item}</span>`).join('');
+                })
+                .catch(() => {
+                    document.getElementById('model-status-value').textContent = 'Backend unavailable';
+                    document.getElementById('model-status-value').style.color = 'var(--danger)';
+                });
+        }
+
+        function updateSetting(key, value) {
+            const current = settingsStore.getSettings();
+            current[key] = value;
+            settingsStore.persistSettings(current);
+            settingsStore.applySettings(current);
+            syncSettingsUi(current);
+            setSaveFeedback('Saved', false);
+        }
+
+        segmentButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const { setting, value } = button.dataset;
+                if (!setting || !value) return;
+                updateSetting(setting, value);
+            });
+        });
+
+        switchButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const key = button.dataset.setting;
+                if (!key) return;
+                const current = settingsStore.getSettings();
+                current[key] = !current[key];
+                settingsStore.persistSettings(current);
+                settingsStore.applySettings(current);
+                syncSettingsUi(current);
+                setSaveFeedback('Saved', false);
+            });
+        });
+
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.panel;
+                panels.forEach((panel) => {
+                    const isActive = panel.id === `panel-${target}`;
+                    panel.style.display = isActive ? 'block' : 'none';
+                    panel.classList.toggle('active', isActive);
+                });
+                tabs.forEach((item) => {
+                    const isActive = item === tab;
+                    item.classList.toggle('active', isActive);
+                    item.setAttribute('aria-selected', String(isActive));
+                });
+            });
+        });
+
+        document.getElementById('clear-history-btn').addEventListener('click', () => {
+            const confirmed = window.confirm('Clear all analysis history?');
+            if (!confirmed) return;
+            fetch('/api/history/clear', { method: 'POST' })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        showToast('Analysis history cleared.');
+                    } else {
+                        showToast(data.error || 'Unable to clear history.');
+                    }
+                })
+                .catch(() => showToast('Unable to clear history.'));
+        });
+
+        document.getElementById('reset-settings-btn').addEventListener('click', () => {
+            const confirmed = window.confirm('Reset all settings?');
+            if (!confirmed) return;
+            const defaults = settingsStore.reset();
+            syncSettingsUi(defaults);
+            setSaveFeedback('Settings restored', false);
+            showToast('Settings restored.');
+        });
+
+        const initial = settingsStore.getSettings();
+        syncSettingsUi(initial);
+        settingsStore.applySettings(initial);
+        setSaveFeedback('Saved', false);
+        loadHealth();
+    });
+</script>
+{% endblock %}
