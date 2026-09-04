@@ -351,17 +351,28 @@
     document.querySelectorAll('.bar-fill[data-pct], .fill[data-pct]').forEach(function(el) {
         el.style.width = (el.dataset.pct || 0) + '%';
     });
+</script>
 
+<script id="copilot-context-data" type="application/json">
+{{ {
+    "cell_type": cell_type,
+    "confidence": confidence,
+    "morphology": {
+        "nc_ratio": (morphology.nc_ratio if morphology else 0.5),
+        "lobe_count": (morphology.lobe_count if morphology else 1),
+        "granularity_index": (morphology.granularity_index if morphology else 20.0),
+        "cell_diameter_um": (morphology.cell_diameter_um if morphology else 13.0)
+    }
+} | tojson }}
+</script>
+
+<script>
     // Clinical Copilot Interactive Chat
-    const currentContext = {
-        cell_type: "{{ cell_type }}",
-        confidence: {{ confidence }},
-        morphology: {
-            nc_ratio: {{ morphology.nc_ratio if morphology else 0.5 }},
-            lobe_count: {{ morphology.lobe_count if morphology else 1 }},
-            granularity_index: {{ morphology.granularity_index if morphology else 20.0 }},
-            cell_diameter_um: {{ morphology.cell_diameter_um if morphology else 13.0 }}
-        }
+    const contextEl = document.getElementById('copilot-context-data');
+    const currentContext = contextEl ? JSON.parse(contextEl.textContent) : {
+        cell_type: "neutrophil",
+        confidence: 85.0,
+        morphology: { nc_ratio: 0.5, lobe_count: 1, granularity_index: 20.0, cell_diameter_um: 13.0 }
     };
 
     function appendMessage(sender, text) {
